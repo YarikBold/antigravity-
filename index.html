@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Antigravity — AI Workout Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            dark: { DEFAULT:'#121212', 800:'#1a1a2e', 700:'#1e1e32', 600:'#2a2a3e', 500:'#3a3a4e' },
+            purple: { DEFAULT:'#8B5CF6', light:'#A78BFA', dark:'#7C3AED', glow:'rgba(139,92,246,0.4)' },
+            pink: { DEFAULT:'#EC4899', neon:'#F472B6', glow:'rgba(236,72,153,0.4)' },
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    body{background:#121212;color:#e5e7eb;font-family:'Inter',system-ui,sans-serif;min-height:100dvh;overflow-x:hidden}
+    .section{display:none;animation:fadeUp .4s ease-out}.section.active{display:block}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+    .anim-float{animation:float 3s ease-in-out infinite}
+    .grad-text{background:linear-gradient(135deg,#8B5CF6,#EC4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .grad-border{position:relative;border-radius:16px}
+    .grad-border::before{content:'';position:absolute;inset:0;border-radius:16px;padding:2px;background:linear-gradient(135deg,#8B5CF6,#EC4899);-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none}
+    .glass{background:rgba(30,30,46,.55);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(139,92,246,.12);border-radius:16px}
+    .card-hover{transition:transform .2s,box-shadow .2s}.card-hover:hover{transform:translateY(-4px);box-shadow:0 12px 40px rgba(139,92,246,.25)}
+    .btn-primary{background:linear-gradient(135deg,#8B5CF6,#EC4899);color:#fff;border:none;border-radius:12px;padding:14px 28px;font-weight:600;font-size:15px;cursor:pointer;transition:opacity .2s,transform .15s;width:100%}
+    .btn-primary:active{transform:scale(.96)}
+    .btn-ghost{background:rgba(139,92,246,.12);color:#A78BFA;border:1px solid rgba(139,92,246,.2);border-radius:12px;padding:10px 20px;font-weight:500;cursor:pointer;transition:all .2s}
+    .input-dark{background:rgba(42,42,62,.6);border:1px solid rgba(139,92,246,.15);border-radius:10px;color:#e5e7eb;padding:10px 14px;font-size:15px;width:100%;transition:border-color .2s}
+    .input-dark:focus{outline:none;border-color:#8B5CF6}
+    .set-row.done{opacity:.5;background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.3)}
+    
+    /* Calendar Scroll */
+    .cal-scroll { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 10px; padding-bottom: 8px; -webkit-overflow-scrolling: touch; }
+    .cal-scroll::-webkit-scrollbar { display: none; }
+    .cal-day { flex: 0 0 70px; scroll-snap-align: center; text-align: center; padding: 12px 0; border-radius: 14px; background: rgba(30,30,46,.5); border: 1px solid rgba(139,92,246,.1); transition: all 0.2s; position: relative; }
+    .cal-day.today { border-color: #8B5CF6; box-shadow: 0 0 15px rgba(139,92,246,0.3); }
+    .cal-day.scheduled { border-bottom: 3px solid #EC4899; }
+    .cal-day.completed { border-bottom: 3px solid #22C55E; background: rgba(34,197,94,0.1); }
+    .cal-day.missed { border-bottom: 3px solid #EF4444; background: rgba(239,68,68,0.1); }
+    .day-name { font-size: 11px; text-transform: uppercase; color: #9CA3AF; font-weight: 600; margin-bottom: 4px; }
+    .day-num { font-size: 20px; font-weight: 800; color: #FFF; }
+  </style>
+</head>
+<body>
+
+<header id="app-header" class="hidden sticky top-0 z-50 glass px-4 py-3" style="border-radius:0;border-top:none;border-left:none;border-right:none">
+  <div class="max-w-lg mx-auto flex items-center justify-between">
+    <h1 class="text-lg font-black tracking-tight grad-text">ANTIGRAVITY</h1>
+    <div class="flex items-center gap-3">
+      <span id="header-user" class="text-xs text-gray-400"></span>
+      <button onclick="logout()" class="text-gray-500 hover:text-white text-xs">Выйти</button>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-lg mx-auto px-4 pb-24">
+
+<section id="profile-select" class="section active pt-16">
+  <div class="text-center mb-10">
+    <div class="text-5xl mb-4 anim-float">🚀</div>
+    <h1 class="text-3xl font-black grad-text mb-2">ANTIGRAVITY</h1>
+    <p class="text-gray-400 text-sm">AI-трекер силовых тренировок</p>
+  </div>
+  <div class="space-y-4">
+    <button onclick="selectProfile(1)" class="w-full grad-border card-hover">
+      <div class="glass p-6 flex items-center gap-5" style="border-radius:14px">
+        <div class="text-4xl">🏋️‍♂️</div>
+        <div class="text-left flex-1">
+          <div class="font-bold text-white text-lg">Ярик</div>
+          <div class="text-gray-400 text-sm mt-1">Возврат к тренировкам • Сброс веса</div>
+        </div>
+      </div>
+    </button>
+    <button onclick="selectProfile(2)" class="w-full grad-border card-hover">
+      <div class="glass p-6 flex items-center gap-5" style="border-radius:14px">
+        <div class="text-4xl">💪</div>
+        <div class="text-left flex-1">
+          <div class="font-bold text-white text-lg">Олеся</div>
+          <div class="text-gray-400 text-sm mt-1">Тонус • Ягодицы, ноги, грудь</div>
+        </div>
+      </div>
+    </button>
+  </div>
+</section>
+
+<section id="dashboard" class="section pt-6">
+  <div class="mb-6 flex justify-between items-end">
+    <div>
+      <p class="text-gray-400 text-sm mb-1">Добро пожаловать 👋</p>
+      <h2 class="text-2xl font-black text-white" id="dash-name"></h2>
+    </div>
+    <button onclick="showSection('schedule-config')" class="btn-ghost text-xs py-2 px-3">График ⚙️</button>
+  </div>
+
+  <!-- Calendar UI -->
+  <div class="mb-8">
+    <div class="flex justify-between items-center mb-3">
+      <button onclick="shiftWeek(-1)" class="text-purple text-xl font-bold">‹</button>
+      <h3 class="text-sm font-semibold text-gray-300 uppercase tracking-wider flex-1 text-center">
+        Календарь тренировок
+        <span id="cal-month-label" class="text-xs text-purple font-bold ml-2"></span>
+      </h3>
+      <button onclick="shiftWeek(1)" class="text-purple text-xl font-bold">›</button>
+    </div>
+    <div class="cal-scroll" id="calendar-bar">
+      <!-- Generated via JS -->
+    </div>
+    <p id="missed-warning" class="hidden mt-3 text-xs text-red-400 bg-red-500/10 p-2 rounded-lg border border-red-500/20">
+      ⚠️ Пропущена тренировка! Мы перенесли её на сегодня.
+    </p>
+  </div>
+
+  <!-- Pull-up Guide for Yaroslav -->
+  <div id="pullup-guide" class="hidden glass p-5 mb-6" style="border-left: 3px solid #8B5CF6;">
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="text-white font-bold text-sm">🎯 Цель: Первое подтягивание</h3>
+      <span class="text-2xl">🔥</span>
+    </div>
+    <p class="text-gray-400 text-xs mb-3">
+      Так как ты делаешь 0 раз, мы добавили спец. упражнения: <b>Негативные подтягивания</b> и <b>Австралийские</b>. Фокусируйся на медленном опускании (3-5 секунд). Когда сможешь сделать 5 негативных фаз уверенно — ты сделаешь 1 полноценное!
+    </p>
+  </div>
+
+  <div class="glass p-5 mb-6">
+    <div class="flex items-center justify-between mb-1">
+      <div class="text-xs text-gray-400 uppercase tracking-wider">Программа</div>
+      <button onclick="showSection('plan-select')" class="text-purple text-xs hover:text-white">Сменить</button>
+    </div>
+    <div class="text-lg font-bold text-white" id="dash-plan-name"></div>
+    <p class="text-gray-500 text-xs mt-1" id="dash-plan-desc"></p>
+  </div>
+
+  <div class="mb-4">
+    <h3 class="text-sm font-semibold text-gray-300 mb-3 uppercase tracking-wider">Доступные дни программы</h3>
+    <div class="grid grid-cols-2 gap-3" id="day-buttons"></div>
+  </div>
+  
+  <button onclick="showSection('pullup-plan')" class="btn-ghost w-full mt-4">
+    <span class="text-2xl mr-2">📈</span> План подтягиваний: прогрессия к первому
+  </button>
+</section>
+
+<!-- Pull-up Plan -->
+<section id="pullup-plan" class="section pt-6">
+  <button onclick="showSection('dashboard')" class="text-gray-400 hover:text-white text-sm mb-4">← Назад</button>
+  <h2 class="text-xl font-bold text-white mb-2">📈 План подтягиваний</h2>
+  <p class="text-gray-400 text-sm mb-6">Прогрессия от 0 к первому чистому подтягиванию. Делай 2-3 раза в неделю.</p>
+  
+  <div class="space-y-4" id="pullup-stages">
+    <!-- Generated by JS -->
+  </div>
+  
+  <div class="mt-6 glass p-4">
+    <h3 class="text-white font-bold mb-3">📋 Твой прогресс</h3>
+    <div class="space-y-2" id="pullup-progress">
+      <!-- Filled by JS -->
+    </div>
+  </div>
+</section>
+
+<!-- Schedule Configuration -->
+<section id="schedule-config" class="section pt-6">
+  <button onclick="showSection('dashboard')" class="text-gray-400 hover:text-white text-sm mb-4">← Назад</button>
+  <h2 class="text-xl font-bold text-white mb-2">Настройка графика</h2>
+  <p class="text-gray-400 text-sm mb-6">Выбери до 4 дней в неделю для тренировок.</p>
+  
+  <div class="grid grid-cols-2 gap-3 mb-8" id="schedule-days-grid">
+    <label class="glass p-4 flex items-center gap-3 cursor-pointer"><input type="checkbox" value="1" class="sched-cb"> ПН</label>
+    <label class="glass p-4 flex items-center gap-3 cursor-pointer"><input type="checkbox" value="2" class="sched-cb"> ВТ</label>
+    <label class="glass p-4 flex items-center gap-3 cursor-pointer"><input type="checkbox" value="3" class="sched-cb"> СР</label>
+    <label class="glass p-4 flex items-center gap-3 cursor-pointer"><input type="checkbox" value="4" class="sched-cb"> ЧТ</label>
+    <label class="glass p-4 flex items-center gap-3 cursor-pointer"><input type="checkbox" value="5" class="sched-cb"> ПТ</label>
+    <label class="glass p-4 flex items-center gap-3 cursor-pointer"><input type="checkbox" value="6" class="sched-cb"> СБ</label>
+    <label class="glass p-4 flex items-center gap-3 cursor-pointer"><input type="checkbox" value="0" class="sched-cb"> ВС</label>
+  </div>
+  <button onclick="saveSchedule()" class="btn-primary" id="btn-save-sched">Сохранить</button>
+</section>
+
+<!-- Plan Selection -->
+<section id="plan-select" class="section pt-6">
+  <button onclick="showSection('dashboard')" class="text-gray-400 hover:text-white text-sm mb-4">← Назад</button>
+  <h2 class="text-xl font-bold text-white mb-2">Выбор программы</h2>
+  <p class="text-gray-400 text-sm mb-6">Выбери программу тренировок. Прогресс весов сохраняется отдельно для каждой.</p>
+  
+  <div class="space-y-4" id="plan-list">
+    <!-- Generated by JS -->
+  </div>
+</section>
+
+<!-- Warmup Screen -->
+<section id="warmup-screen" class="section pt-10">
+  <button onclick="showSection('dashboard')" class="text-gray-400 hover:text-white text-sm mb-4">← Отмена</button>
+  <h2 class="text-2xl font-black text-white mb-2" id="warmup-title">Подготовка</h2>
+  <p class="text-gray-400 text-sm mb-8">Сделай быструю суставную разминку перед тяжелыми весами.</p>
+
+  <div class="space-y-4 mb-8" id="warmup-list">
+    <!-- Generated dynamically based on upper/lower -->
+  </div>
+
+  <button onclick="startWorkout()" class="btn-primary">Начать тренировку 🚀</button>
+</section>
+
+<section id="active-workout" class="section pt-6">
+  <div class="flex items-center justify-between mb-5">
+    <div>
+      <h2 class="text-xl font-bold text-white">Тренировка</h2>
+      <p class="text-purple font-bold text-sm" id="workout-day-label"></p>
+      <!-- Badge: week/day info -->
+      <div id="workout-badge" class="mt-2 flex items-center gap-2"></div>
+    </div>
+    <button onclick="showSection('dashboard')" class="text-red-400 text-sm font-medium">Отмена</button>
+  </div>
+  
+  <!-- RIR Tooltip -->
+  <div class="glass p-3 mb-4 flex items-center gap-3 text-xs" style="border-left:3px solid #8B5CF6">
+    <span class="text-purple font-bold">RIR</span>
+    <span class="text-gray-300">(Reps In Reserve)</span>
+    <span class="text-gray-500">— сколько повторений осталось в запасе.</span>
+    <span class="text-green-400 font-mono">0</span>
+    <span class="text-gray-500">= до отказа,</span>
+    <span class="text-yellow-400 font-mono">1-2</span>
+    <span class="text-gray-500">= в запасе 1-2 повт.,</span>
+    <span class="text-purple font-mono">3+</span>
+    <span class="text-gray-500">= легко.</span>
+  </div>
+  
+  <div class="space-y-4" id="exercise-cards"></div>
+  <div class="mt-8">
+    <button onclick="finishWorkout()" class="btn-primary" id="btn-finish">🏁 Завершить</button>
+  </div>
+</section>
+
+<section id="workout-complete" class="section pt-10 text-center">
+  <div class="text-6xl mb-4 anim-float">🎉</div>
+  <h2 class="text-2xl font-black grad-text mb-2">Отличная работа!</h2>
+  <p class="text-gray-400 text-sm mb-6" id="complete-stats"></p>
+  <div id="progression-results" class="space-y-3 mb-8 text-left"></div>
+  <button onclick="loadDashboard()" class="btn-primary">На главную</button>
+</section>
+
+<section id="loading-screen" class="section pt-20 flex flex-col items-center">
+  <div class="text-purple text-2xl font-bold mb-2">⏳</div>
+  <p class="text-gray-400 text-sm">Загрузка...</p>
+</section>
+
+</main>
+<script>
+const S = {
+  userId: null, user: null, planData: null,
+  selectedDay: null, dayExercises: [], workoutSets: {}, lastWeights: {}
+};
+
+async function api(path, opts={}) {
+  const r = await fetch(path, { headers: {'Content-Type':'application/json'}, ...opts });
+  if (!r.ok) throw new Error('API ' + r.status);
+  return r.json();
+}
+
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
+  const header = document.getElementById('app-header');
+  if (header) header.classList.toggle('hidden', id === 'profile-select');
+}
+
+async function selectProfile(uid) {
+  S.userId = uid; localStorage.setItem('ag_uid', uid);
+  showSection('loading-screen');
+  try {
+    S.user = await api('/api/user/' + uid);
+    S.lastWeights = await api('/api/last_weights/' + uid);
+    await loadDashboard();
+  } catch(e) { alert('Ошибка: ' + e.message); showSection('profile-select'); }
+}
+
+function logout() { localStorage.removeItem('ag_uid'); showSection('profile-select'); }
+
+async function loadDashboard() {
+  const dashName = document.getElementById('dash-name');
+  const headerUser = document.getElementById('header-user');
+  const pullupGuide = document.getElementById('pullup-guide');
+  const dashPlanName = document.getElementById('dash-plan-name');
+  const dashPlanDesc = document.getElementById('dash-plan-desc');
+  
+  if (dashName) dashName.textContent = S.user.name;
+  if (headerUser) headerUser.textContent = S.user.name;
+  if (pullupGuide) pullupGuide.classList.toggle('hidden', S.user.id !== 1);
+
+  S.planData = await api('/api/plan/' + S.user.current_plan_id);
+  if (dashPlanName) dashPlanName.textContent = S.planData.plan.name;
+  if (dashPlanDesc) dashPlanDesc.textContent = S.planData.plan.description;
+  
+  S.workoutLogs = await api('/api/logs/' + S.userId);
+  
+  renderCalendar();
+  renderDayButtons();
+  showSection('dashboard');
+}
+
+// Calendar state
+let calWeekStart = null; // Monday of current viewed week
+
+function getWeekStart(date) {
+  const d = new Date(date);
+  const day = d.getDay(); // 0=Sun, 1=Mon...
+  const diff = (day === 0 ? -6 : 1) - day; // Monday as start
+  d.setDate(d.getDate() + diff);
+  d.setHours(0,0,0,0);
+  return d;
+}
+
+function shiftWeek(delta) {
+  if (!calWeekStart) calWeekStart = getWeekStart(new Date());
+  calWeekStart.setDate(calWeekStart.getDate() + delta * 7);
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const bar = document.getElementById('calendar-bar');
+  bar.innerHTML = '';
+  const days = ['ПН','ВТ','СР','ЧТ','ПТ','СБ','ВС'];
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const schedule = S.user.schedule || [];
+  const logs = S.workoutLogs || [];
+  
+  if (!calWeekStart) calWeekStart = getWeekStart(today);
+  
+  // Update month label
+  const monthNames = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+  const monthLabel = document.getElementById('cal-month-label');
+  if (monthLabel) monthLabel.textContent = 
+    monthNames[calWeekStart.getMonth()] + ' ' + calWeekStart.getFullYear();
+  
+  // Helper: check if there's a log for a specific date
+  const hasLogForDate = (date) => {
+    const dateStr = date.toISOString().split('T')[0];
+    return logs.some(log => log.date.startsWith(dateStr));
+  };
+  
+  // Show 7 days: Mon-Sun of current week
+  for(let i = 0; i < 7; i++) {
+    let d = new Date(calWeekStart);
+    d.setDate(calWeekStart.getDate() + i);
+    let dow = d.getDay(); // 0=Sun, 1=Mon...
+    // Convert to schedule index: Mon=1...Sun=0
+    let schedDow = dow === 0 ? 0 : dow;
+    
+    let isToday = d.getTime() === today.getTime();
+    let isScheduled = schedule.includes(schedDow);
+    let hasLog = hasLogForDate(d);
+    let isPast = d < today;
+    let isFuture = d > today;
+    
+    let cls = 'cal-day ';
+    if (isToday) cls += 'today ';
+    if (hasLog) cls += 'completed ';
+    else if (isScheduled && isPast) cls += 'missed ';
+    else if (isScheduled) cls += 'scheduled ';
+    
+    // Clickable day - opens that day's workout
+    let clickHandler = `onclick="openDayFromCalendar(${i})"`;
+    
+    bar.innerHTML += `
+      <div class="${cls}" ${clickHandler} style="cursor:pointer">
+        <div class="day-name">${days[i]}</div>
+        <div class="day-num">${d.getDate()}</div>
+      </div>
+    `;
+  }
+  
+  if (document.querySelector('.cal-day.missed')) {
+    document.getElementById('missed-warning').classList.remove('hidden');
+  } else {
+    document.getElementById('missed-warning').classList.add('hidden');
+  }
+}
+
+function openDayFromCalendar(dayOffset) {
+  if (!calWeekStart) return;
+  const d = new Date(calWeekStart);
+  d.setDate(calWeekStart.getDate() + dayOffset);
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  
+  // Can't start workout in future
+  if (d > today) {
+    alert('Нельзя начать тренировку в будущем');
+    return;
+  }
+  
+  // Find which program day this calendar day corresponds to
+  const dow = d.getDay(); // 0=Sun...
+  const schedDow = dow === 0 ? 0 : dow;
+  const schedule = S.user.schedule || [];
+  
+  if (!schedule.includes(schedDow)) {
+    alert('В этот день тренировка не запланирована');
+    return;
+  }
+  
+  // Map schedule day to program day_number
+  const scheduleIndex = schedule.indexOf(schedDow);
+  const programDays = Array.from(new Set(S.planData.exercises.map(e => e.day_number))).sort((a,b)=>a-b);
+  const dayNumber = programDays[scheduleIndex % programDays.length];
+  
+  initWarmup(dayNumber);
+}
+
+async function saveSchedule() {
+  let selected = Array.from(document.querySelectorAll('.sched-cb:checked')).map(cb => parseInt(cb.value));
+  if (selected.length > 4) return alert('Максимум 4 дня в неделю!');
+  
+  const btn = document.getElementById('btn-save-sched');
+  if (btn) btn.textContent = 'Сохранение...';
+  try {
+    await api('/api/user/' + S.userId + '/schedule', { method: 'PATCH', body: JSON.stringify({ schedule: selected }) });
+    S.user.schedule = selected;
+    loadDashboard();
+  } catch(e) { alert('Ошибка: ' + e.message); }
+}
+
+// Plan Selection
+async function loadPlans() {
+  const plans = await api('/api/plans');
+  const cont = document.getElementById('plan-list');
+  if (!cont) return;
+  cont.innerHTML = '';
+  
+  plans.forEach(plan => {
+    const isCurrent = S.user.current_plan_id === plan.id;
+    const btn = document.createElement('button');
+    btn.className = `glass p-5 card-hover ${isCurrent ? 'border-l-4 border-purple opacity-100' : 'opacity-70'}`;
+    btn.innerHTML = `
+      <div class="flex items-start justify-between">
+        <div>
+          <div class="text-white font-bold text-lg">${plan.name}</div>
+          <div class="text-gray-400 text-sm mt-1">${plan.description}</div>
+          <div class="text-xs text-gray-500 mt-2">${(plan.tags || []).map(t => `<span class="px-2 py-0.5 bg-purple/20 rounded text-purple mr-1">${t}</span>`).join('')}</div>
+        </div>
+        ${isCurrent ? '<span class="text-green-400 text-2xl">✓</span>' : ''}
+      </div>
+    `;
+    if (!isCurrent) {
+      btn.onclick = () => selectPlan(plan.id);
+    }
+    cont.appendChild(btn);
+  });
+}
+
+async function selectPlan(planId) {
+  try {
+    await api('/api/user/' + S.userId + '/plan', { method: 'PATCH', body: JSON.stringify({ plan_id: planId }) });
+    S.user.current_plan_id = planId;
+    loadDashboard();
+  } catch(e) { alert('Ошибка: ' + e.message); }
+}
+
+function renderDayButtons() {
+  const cont = document.getElementById('day-buttons');
+  if (!cont) return;
+  cont.innerHTML = '';
+  const days = new Set(S.planData.exercises.map(e => e.day_number));
+  
+  days.forEach(d => {
+    let btn = document.createElement('button');
+    btn.className = 'glass p-4 text-left card-hover';
+    btn.innerHTML = `<div class="text-purple font-bold uppercase text-xs mb-1">День ${d}</div><div class="text-white font-bold">Начать</div>`;
+    btn.onclick = () => initWarmup(d);
+    cont.appendChild(btn);
+  });
+}
+
+function initWarmup(day) {
+  S.selectedDay = day;
+  const exList = S.planData.exercises.filter(e => e.day_number === day);
+  S.dayExercises = exList;
+  
+  let isLower = exList.some(e => ['quads','hamstrings','glutes'].includes(e.exercises.target_muscle));
+  let isUpper = exList.some(e => ['chest','back','shoulders','biceps','triceps'].includes(e.exercises.target_muscle));
+  
+  let html = '';
+  if (isUpper) {
+    html += `<div class="glass p-3 flex items-center gap-3"><div class="text-2xl">🔄</div><div><div class="text-white font-bold text-sm">Вращения плечами и руками</div><div class="text-gray-400 text-xs">Вперед/назад по 15 раз</div></div></div>`;
+    html += `<div class="glass p-3 flex items-center gap-3"><div class="text-2xl">💪</div><div><div class="text-white font-bold text-sm">Отжимания от пола/скамьи</div><div class="text-gray-400 text-xs">1 подход х 10-15 легко</div></div></div>`;
+  }
+  if (isLower) {
+    html += `<div class="glass p-3 flex items-center gap-3"><div class="text-2xl">🦵</div><div><div class="text-white font-bold text-sm">Махи ногами</div><div class="text-gray-400 text-xs">Вперед-назад и в стороны по 10 раз</div></div></div>`;
+    html += `<div class="glass p-3 flex items-center gap-3"><div class="text-2xl">🏋️</div><div><div class="text-white font-bold text-sm">Воздушные приседания</div><div class="text-gray-400 text-xs">1 подход х 15 раз</div></div></div>`;
+  }
+  
+  const warmupList = document.getElementById('warmup-list');
+  const warmupTitle = document.getElementById('warmup-title');
+  if (warmupList) warmupList.innerHTML = html;
+  if (warmupTitle) warmupTitle.textContent = (isLower && isUpper) ? 'Фулбади разминка' : (isLower ? 'Разминка Низа' : 'Разминка Верха');
+  
+  showSection('warmup-screen');
+}
+
+function startWorkout() {
+  S.workoutSets = {};
+  S.dayExercises.forEach(ex => {
+    let arr = [];
+    let last = S.lastWeights[String(ex.exercise_id)];
+    let defaultW = last ? last.weight : 0;
+    
+    // Auto-progress suggested weight based on previous workout excess capacity
+    if (last && last.weight > 0) {
+      let tr = parseInt(ex.reps_target.split('-')[1] || ex.reps_target);
+      let excess = (last.reps + last.rir) - tr;
+      if (excess > 0) {
+        defaultW = parseFloat((last.weight * (1 + (excess * 0.025))).toFixed(2));
+      }
+    }
+    
+    for(let i=0; i<ex.sets; i++) {
+      arr.push({ weight: defaultW, reps: 0, rir: 2, done: false });
+    }
+    S.workoutSets[ex.exercise_id] = arr;
+  });
+  
+  const dayLabel = document.getElementById('workout-day-label');
+  if (dayLabel) dayLabel.textContent = 'День ' + S.selectedDay;
+  renderWorkoutBadge();
+  renderExerciseCards();
+  showSection('active-workout');
+}
+
+function renderWorkoutBadge() {
+  const badge = document.getElementById('workout-badge');
+  if (!badge) return;
+  
+  // Calculate week number since program start (fallback to 30 days ago if no created_at)
+  const startDate = new Date(S.user.created_at || (Date.now() - 30*24*60*60*1000));
+  const today = new Date();
+  const diffWeeks = Math.floor((today - startDate) / (7 * 24 * 60 * 60 * 1000)) + 1;
+  const weekNum = Math.max(1, diffWeeks);
+  
+  // Determine day type from exercises
+  const muscles = S.dayExercises.map(e => e.exercises.target_muscle);
+  const isLower = muscles.some(m => ['quads','hamstrings','glutes'].includes(m));
+  const isUpper = muscles.some(m => ['chest','back','shoulders','biceps','triceps'].includes(m));
+  let dayType = isLower && isUpper ? 'FULL BODY' : (isLower ? 'LOWER' : 'UPPER');
+  
+  badge.innerHTML = `
+    <span class="glass px-3 py-1 text-xs font-bold text-purple">Неделя ${weekNum}</span>
+    <span class="glass px-3 py-1 text-xs font-bold text-pink">${dayType}</span>
+    <span class="glass px-3 py-1 text-xs text-gray-400">День ${S.selectedDay}</span>
+  `;
+}
+
+function renderExerciseCards() {
+  const cont = document.getElementById('exercise-cards');
+  if (!cont) return;
+  cont.innerHTML = '';
+  S.dayExercises.forEach(ex => {
+    let e = ex.exercises;
+    let setsHTML = S.workoutSets[ex.exercise_id].map((s,i) => `
+      <div class="set-row flex items-center gap-2 p-2 rounded-lg border border-transparent ${s.done?'done':''}">
+        <span class="text-xs text-gray-500 w-4">#${i+1}</span>
+        <input type="number" step="0.5" value="${s.weight !== '' ? s.weight : ''}" class="input-dark py-1 text-center" onchange="upd(${ex.exercise_id},${i},'weight',this.value)">
+        <span class="text-xs">×</span>
+        <input type="number" value="${s.reps !== '' ? s.reps : ''}" class="input-dark py-1 text-center" onchange="upd(${ex.exercise_id},${i},'reps',this.value)">
+        <span class="text-xs">RIR</span>
+        <input type="number" value="${s.rir !== '' ? s.rir : ''}" class="input-dark py-1 text-center" onchange="upd(${ex.exercise_id},${i},'rir',this.value)">
+        <button onclick="done(${ex.exercise_id},${i})" class="w-8 h-8 rounded bg-purple/20 text-purple">✓</button>
+      </div>`).join('');
+      
+    cont.innerHTML += `<div class="glass p-4 border-l-4 border-purple"><div class="text-white font-bold mb-2">${e.name} <span class="text-xs text-gray-500 font-normal">(${ex.sets}×${ex.reps_target})</span></div>${setsHTML}</div>`;
+  });
+}
+
+window.upd = (eid, idx, field, val) => {
+  const num = parseFloat(val);
+  S.workoutSets[eid][idx][field] = isNaN(num) ? '' : num;
+};
+window.done = (eid, idx) => { 
+  let s = S.workoutSets[eid][idx]; 
+  if(s.weight === '' || s.reps === '' || s.reps <= 0) return alert('Введи вес и повторения (>0)');
+  s.done = true; 
+  let next = S.workoutSets[eid][idx+1];
+  if(next && next.weight === '') next.weight = s.weight;
+  renderExerciseCards(); 
+};
+
+async function finishWorkout() {
+  let sets = [];
+  Object.keys(S.workoutSets).forEach(eid => {
+    S.workoutSets[eid].forEach((s, i) => {
+      if(s.done) {
+        sets.push({ 
+          exercise_id: parseInt(eid), 
+          set_number: i+1, 
+          weight: Number(s.weight), 
+          reps: Number(s.reps), 
+          rir: s.rir === '' ? 2 : Number(s.rir) 
+        });
+      }
+    });
+  });
+  
+  if(!sets.length) return alert('Нет завершённых подходов!');
+  const btnFinish = document.getElementById('btn-finish');
+  if (btnFinish) btnFinish.textContent = 'Сохранение...';
+  
+  try {
+    let res = await api('/api/finish_workout', { method: 'POST', body: JSON.stringify({ user_id: S.userId, day_number: S.selectedDay, sets }) });
+    S.lastWeights = await api('/api/last_weights/' + S.userId);
+    
+    const pCont = document.getElementById('progression-results');
+    if (pCont) {
+      pCont.innerHTML = '';
+      if(res.progressions && res.progressions.length) {
+        res.progressions.forEach(p => {
+          let eName = S.dayExercises.find(e => e.exercise_id === p.exercise_id)?.exercises.name || 'Упражнение';
+          pCont.innerHTML += `<div class="glass p-3 mb-2">📈 ${eName}: <span class="text-gray-400">${p.old_weight} кг</span> → <span class="text-green-400 font-bold">${p.new_weight} кг</span></div>`;
+        });
+      }
+    }
+    showSection('workout-complete');
+  } catch(e) { alert(e.message); }
+  if (btnFinish) btnFinish.textContent = '🏁 Завершить';
+}
+
+// Pull-up Plan Data & Rendering
+const PULLUP_STAGES = [
+  { 
+    id: 1, name: 'Этап 1: Основа', 
+    goal: 'Укрепить хват и латы',
+    exercises: [
+      { name: 'Висячие на турнике', sets: 3, reps: '30-60 сек', desc: 'Просто виси, набирай время' },
+      { name: 'Австралийские подтягивания', sets: 3, reps: '8-12', desc: 'Ногами на полу, корпус прямым' },
+      { name: 'Скакалка / Кардио', sets: 1, reps: '5 мин', desc: 'Разогрев перед тренировкой' }
+    ],
+    test: 'Австралийские: 3×12 чистых'
+  },
+  { 
+    id: 2, name: 'Этап 2: Негативные', 
+    goal: 'Научиться контролировать опускание',
+    exercises: [
+      { name: 'Негативные подтягивания', sets: 3, reps: '3-5', desc: 'Поднимись (прыжок/табурет), опускайся 3-5 сек' },
+      { name: 'Австралийские подтягивания', sets: 3, reps: '10-15', desc: 'Продолжай укреплять' },
+      { name: 'Висячие с подтягиванием лопаток', sets: 3, reps: '8-10', desc: 'В висе подтяни лопатки вниз, не сгибая руки' }
+    ],
+    test: 'Негативные: 5 подходов по 5 сек'
+  },
+  { 
+    id: 3, name: 'Этап 3: С эспандером', 
+    goal: 'Делать полные подтягивания с помощью',
+    exercises: [
+      { name: 'Подтягивания с эспандером', sets: 3, reps: '5-8', desc: 'Эспандер под ногу/колено, уменьшай сопротивление' },
+      { name: 'Негативные подтягивания', sets: 2, reps: '4-6', desc: 'Опускание 4-5 сек' },
+      { name: 'Австралийские (широкий хват)', sets: 2, reps: '8-10', desc: 'Разнообразие угла' }
+    ],
+    test: 'С эспандером: 3×8 (самый слабый эспандер)'
+  },
+  { 
+    id: 4, name: 'Этап 4: Первое чистое', 
+    goal: 'Сделать 1 подтягивание без помощи',
+    exercises: [
+      { name: 'Попытки чистого подтягивания', sets: 5, reps: '1-3', desc: 'Макс. усилие, долгие отдыхи 3-5 мин' },
+      { name: 'Негативные (контроль)', sets: 2, reps: '3-5', desc: 'Поддержание навыка' },
+      { name: 'Австралийские / Эспандер', sets: 2, reps: '8-10', desc: 'Объём для латов' }
+    ],
+    test: '1 чистое подтягивание! 🎉'
+  },
+  { 
+    id: 5, name: 'Этап 5: Объём', 
+    goal: 'Довести до 5-10 подтягиваний',
+    exercises: [
+      { name: 'Подтягивания (лендинг)', sets: 4, reps: 'AMRAP', desc: 'Макс. повт. в каждом подходе' },
+      { name: 'Негативные с паузой', sets: 2, reps: '3-5', desc: 'Пауза 2 сек в нижней точке' },
+      { name: 'Взрывные подтягивания', sets: 3, reps: '3-5', desc: 'Рывок вверх, медленно вниз' }
+    ],
+    test: '5 чистых подтягиваний за подход'
+  }
+];
+
+function renderPullupPlan() {
+  const cont = document.getElementById('pullup-stages');
+  if (!cont) return;
+  cont.innerHTML = '';
+  
+  // Get saved progress from localStorage
+  const progress = JSON.parse(localStorage.getItem('pullup_progress') || '{}');
+  const currentStage = parseInt(localStorage.getItem('pullup_current_stage') || '1');
+  
+  PULLUP_STAGES.forEach((stage, idx) => {
+    const isComplete = progress[stage.id] === true;
+    const isCurrent = stage.id === currentStage;
+    const isLocked = stage.id > currentStage;
+    
+    let html = `
+      <div class="glass p-4 ${isCurrent ? 'border-l-4 border-purple' : ''} ${isLocked ? 'opacity-50' : ''}">
+        <div class="flex items-start justify-between mb-3">
+          <div>
+            <div class="text-white font-bold">${stage.name}</div>
+            <div class="text-purple text-xs font-medium">${stage.goal}</div>
+          </div>
+          <div class="text-2xl">${isComplete ? '✅' : (isCurrent ? '🔥' : '🔒')}</div>
+        </div>
+        <div class="space-y-2 mb-3">
+    `;
+    
+    stage.exercises.forEach(ex => {
+      html += `
+        <div class="flex items-center gap-3 text-sm p-2 bg-black/20 rounded">
+          <span class="text-purple font-mono w-20">${ex.sets}×${ex.reps}</span>
+          <span class="text-white font-medium">${ex.name}</span>
+          <span class="text-gray-400 text-xs">${ex.desc}</span>
+        </div>
+      `;
+    });
+    
+    html += `
+        </div>
+        <div class="text-green-400 text-xs font-medium">✓ Тест перехода: ${stage.test}</div>
+        ${isCurrent && !isComplete ? `
+          <button onclick="completePullupStage(${stage.id})" class="btn-primary mt-3 w-full text-sm">
+            Отметить этап пройденным ✓
+          </button>
+        ` : isComplete ? `
+          <div class="text-green-400 text-xs mt-3 text-center">Этап пройден! Переходи к следующему 🚀</div>
+        ` : ''}
+      </div>
+    `;
+    cont.innerHTML += html;
+  });
+  
+  // Render progress summary
+  renderPullupProgress(progress, currentStage);
+}
+
+function renderPullupProgress(progress, currentStage) {
+  const cont = document.getElementById('pullup-progress');
+  if (!cont) return;
+  const completedCount = Object.keys(progress).filter(k => progress[k] === true).length;
+  
+  let html = `
+    <div class="flex items-center justify-between">
+      <span class="text-gray-400">Пройдено этапов</span>
+      <span class="text-2xl font-black grad-text">${completedCount} / ${PULLUP_STAGES.length}</span>
+    </div>
+    <div class="h-2 bg-gray-800 rounded overflow-hidden mt-2">
+      <div class="h-full bg-gradient-to-r from-purple to-pink" style="width: ${(completedCount / PULLUP_STAGES.length) * 100}%"></div>
+    </div>
+    <div class="text-xs text-gray-500 mt-2">Текущий: ${PULLUP_STAGES[currentStage - 1]?.name || 'Завершён!'}</div>
+  `;
+  cont.innerHTML = html;
+}
+
+function completePullupStage(stageId) {
+  const progress = JSON.parse(localStorage.getItem('pullup_progress') || '{}');
+  progress[stageId] = true;
+  localStorage.setItem('pullup_progress', JSON.stringify(progress));
+  
+  // Unlock next stage
+  if (stageId < PULLUP_STAGES.length) {
+    localStorage.setItem('pullup_current_stage', stageId + 1);
+  }
+  
+  renderPullupPlan();
+}
+
+// Call render when section is shown
+const originalShowSection = showSection;
+showSection = function(id) {
+  originalShowSection(id);
+  if (id === 'pullup-plan') renderPullupPlan();
+  if (id === 'plan-select') loadPlans();
+};
+
+if(localStorage.getItem('ag_uid')) selectProfile(parseInt(localStorage.getItem('ag_uid')));
+else showSection('profile-select');
+</script>
+</body>
+</html>

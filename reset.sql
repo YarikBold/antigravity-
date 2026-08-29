@@ -1,0 +1,6 @@
+﻿-- Удаляем старые таблицы
+DROP TABLE IF EXISTS workout_logs CASCADE;
+DROP TABLE IF EXISTS plan_exercises CASCADE;
+DROP TABLE IF EXISTS exercises CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS workout_plans CASCADE;
