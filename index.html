@@ -23,7 +23,8 @@
   <style>
     *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
     body{background:#121212;color:#e5e7eb;font-family:'Inter',system-ui,sans-serif;min-height:100dvh;overflow-x:hidden}
-    .section{display:none;animation:fadeUp .2s ease-out}.section.active{display:block}
+    .section{display:none !important;animation:fadeUp .2s ease-out}.section.active{display:block !important}
+    #loading-screen.active{display:flex !important}
     @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
     @keyframes spin{to{transform:rotate(360deg)}}
     .spinner{width:36px;height:36px;border:3px solid rgba(139,92,246,.15);border-top-color:#8B5CF6;border-radius:50%;animation:spin .7s linear infinite}
@@ -320,7 +321,7 @@
   <button onclick="loadDashboard()" class="btn-primary">На главную</button>
 </section>
 
-<section id="loading-screen" class="section pt-20 flex flex-col items-center">
+<section id="loading-screen" class="section pt-20 flex-col items-center">
   <div class="spinner mb-4"></div>
   <p class="text-gray-400 text-sm">Загрузка...</p>
 </section>
@@ -378,7 +379,7 @@ async function loadDashboard() {
   if (dashPlanName) dashPlanName.textContent = S.planData.plan.name;
   if (dashPlanDesc) dashPlanDesc.textContent = S.planData.plan.description;
   
-  S.workoutLogs = await api('/api/logs/' + S.userId);
+  try { S.workoutLogs = await api('/api/logs/' + S.userId); } catch(e){ S.workoutLogs = []; console.warn('logs failed', e); }
   
   renderCalendar();
   renderDayButtons();

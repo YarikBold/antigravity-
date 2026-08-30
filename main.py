@@ -323,35 +323,94 @@ async def check_readiness(req: ReadinessRequest):
         f'"general_advice":"<advice>"}}'
     )
 
+    # helper: deterministic fallback без AI
+    def fallback_subs():
+        sore_set = set(m.lower().strip() for m in req.sore_muscles)
+        if not sore_set:
+            return {"substitutions": [], "general_advice": "Отдохни, лёгкая разминка и сон 7-8ч."}
+        # все id уже в дне
+        day_ids = {e["exercise_id"] for e in day_ex.data}
+        # кандидаты для замены: мышца не в sore
+        cands = [e for e in all_ex.data if e["target_muscle"].lower() not in sore_set]
+        # если не нашлось — берём любые изоляционные
+        if not cands:
+            cands = [e for e in all_ex.data if e["movement_pattern"] == "isolation"]
+        subs = []
+        for e in day_ex.data:
+            mus = e["exercises"]["target_muscle"].lower()
+            if mus in sore_set:
+                # найди замену которой нет в дне
+                repl = next((c for c in cands if c["id"] not in day_ids), cands[0] if cands else None)
+                if repl:
+                    subs.append({
+                        "original_exercise_id": e["exercise_id"],
+                        "replacement_exercise_id": repl["id"],
+                        "reason": f"{e['exercises']['name']} нагружает {mus}, заменён на {repl['name']} ({repl['target_muscle']}) чтобы не трогать болезненную зону"
+                    })
+                    day_ids.add(repl["id"])
+        return {
+            "substitutions": subs,
+            "general_advice": "Снизь вес на 20-30%, увеличь отдых, сделай упор на технику. Боль ≥7 — не тренируй болезненную мышцу напрямую."
+        }
+
+    if not OPENROUTER_KEY:
+        fb = fallback_subs()
+        return {"status": "modified" if fb["substitutions"] else "ok", "message": "AI key missing — локальная замена", **fb}
+
+    # пробуем 2 модели
+    for model in ["google/gemini-2.0-flash-exp:free", "stealth/ox-alpha"]:
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.post(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {OPENROUTER_KEY}",
+                        "Content-Type": "application/json",
+                        "HTTP-Referer": "https://antigravity.app",
+                        "X-Title": "Antigravity",
+                    },
+                    json={
+                        "model": model,
+                        "messages": [
+                            {"role": "system", "content": "You are a sports physiologist. Reply strictly in JSON, no markdown."},
+                            {"role": "user",   "content": prompt},
+                        ],
+                        "temperature": 0.3,
+                    },
+                )
+                data = resp.json()
+                # OpenRouter часто возвращает {"error":...} без choices
+                if "error" in data:
+                    raise RuntimeError(f"OpenRouter error {model}: {data['error'].get('message') or data['error']}")
+                if "choices" not in data or not data["choices"]:
+                    raise RuntimeError(f"Bad response {model}: {str(data)[:300]}")
+                content = data["choices"][0]["message"]["content"]
+                if "```json" in content:
+                    content = content.split("```json")[1].split("```")[0]
+                elif "```" in content:
+                    content = content.split("```")[1].split("```")[0]
+                result = json.loads(content.strip())
+                # валидация
+                if "substitutions" not in result:
+                    result["substitutions"] = []
+                if "general_advice" not in result:
+                    result["general_advice"] = ""
+                return {"status": "modified", **result}
+        except Exception as e:
+            last_err = str(e)
+            # пробуем следующую модель
+            continue
+
+    # если обе модели упали — fallback
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {OPENROUTER_KEY}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": "google/gemini-2.0-flash-exp:free",
-                    "messages": [
-                        {"role": "system", "content": "You are a sports physiologist. Reply strictly in JSON, no markdown."},
-                        {"role": "user",   "content": prompt},
-                    ],
-                    "temperature": 0.3,
-                },
-            )
-            data = resp.json()
-            content = data["choices"][0]["message"]["content"]
-            if "```json" in content:
-                content = content.split("```json")[1].split("```")[0]
-            elif "```" in content:
-                content = content.split("```")[1].split("```")[0]
-            result = json.loads(content.strip())
-            return {"status": "modified", **result}
+        fb = fallback_subs()
+        if fb["substitutions"]:
+            return {"status": "modified", "message": f"AI fallback ({last_err})", **fb}
+        return {"status": "ok", "message": "Готов к тренировке — болезненная мышца не участвует в сегодняшнем дне", "substitutions": [], "general_advice": fb["general_advice"]}
     except Exception as e:
         return {
             "status": "error",
-            "message": f"AI unavailable: {str(e)}",
+            "message": f"AI unavailable: {last_err}",
             "substitutions": [],
         }
 
