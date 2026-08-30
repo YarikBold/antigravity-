@@ -592,10 +592,13 @@ async function checkReadiness() {
         resDiv.innerHTML = `<div class="text-green-400 font-bold flex items-center gap-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> ${data.message}</div><button onclick="initWarmup(S.selectedDay)" class="btn-primary mt-3 w-full">К разминке</button>`;
       } else if(data.status === 'modified'){
         S._pendingSubs = data.substitutions || [];
+        // подгрузим названия для красивого отображения
+        let exMap = {};
+        try { const all = await api('/api/exercises'); exMap = Object.fromEntries(all.map(e=>[e.id, e.name])); } catch {}
         let subs = (S._pendingSubs||[]).map(s=>{
           const orig = S.dayExercises.find(e=>e.exercise_id===s.original_exercise_id)?.exercises.name || s.original_exercise_id;
-          const repl = s.replacement_exercise_id;
-          return `<div class="glass p-2 mb-2 text-sm"><span class="text-red-400 line-through">${orig}</span> → <span class="text-green-400">${repl}</span><div class="text-gray-500 text-xs">${s.reason}</div></div>`;
+          const replName = exMap[s.replacement_exercise_id] || ('ID '+s.replacement_exercise_id);
+          return `<div class="glass p-2 mb-2 text-sm"><span class="text-red-400 line-through">${orig}</span> → <span class="text-green-400">${replName}</span><div class="text-gray-500 text-xs">${s.reason}</div></div>`;
         }).join('');
         resDiv.innerHTML = `
           <div class="text-yellow-400 font-bold mb-2 flex items-center gap-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z"/></svg> Найдены замены (pain ${pain}/10)</div>
@@ -603,7 +606,7 @@ async function checkReadiness() {
           ${data.general_advice?`<div class="text-gray-300 text-sm mt-2 flex gap-2"><svg class="w-4 h-4 text-yellow-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.94 12.94 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"/></svg> ${data.general_advice}</div>`:''}
           <div class="grid grid-cols-2 gap-2 mt-3">
             <button onclick="applySubstitutions()" class="btn-primary text-sm">Применить замены</button>
-            <button onclick="initWarmup(S.selectedDay)" class="btn-ghost text-sm">Игнорировать</button>
+            <button onclick="initWarmup(S.selectedDay, true)" class="btn-ghost text-sm">Игнорировать</button>
           </div>
         `;
       } else {
@@ -633,30 +636,38 @@ function updatePain(val){
     pv.style.color = col;
   }
 }
-function skipReadiness(){ initWarmup(S.selectedDay); }
+function skipReadiness(){ S._pendingSubs = []; initWarmup(S.selectedDay, true); }
 async function applySubstitutions(subs){
   subs = subs || S._pendingSubs || [];
-  // subs: [{original_exercise_id, replacement_exercise_id, reason}]
-  if(!subs || !subs.length) return initWarmup(S.selectedDay);
-  // fetch replacement exercise data
+  if(!subs || !subs.length) return initWarmup(S.selectedDay, true);
   try{
     const all = await api('/api/exercises');
     const map = Object.fromEntries(all.map(e=>[e.id,e]));
     subs.forEach(s=>{
       const idx = S.dayExercises.findIndex(e=>e.exercise_id===s.original_exercise_id);
       if(idx!==-1 && map[s.replacement_exercise_id]){
-        // replace exercise ref, keep sets/reps_target from original plan
         S.dayExercises[idx] = { ...S.dayExercises[idx], exercise_id: s.replacement_exercise_id, exercises: map[s.replacement_exercise_id] };
       }
     });
-  }catch{}
-  initWarmup(S.selectedDay);
+  }catch(e){ console.warn('apply failed', e); }
+  // не сбрасываем S.dayExercises через initWarmup, сразу показываем разминку с заменами
+  showWarmupScreen();
 }
 
-function initWarmup(day) {
+function initWarmup(day, ignoreSubs=false) {
   S.selectedDay = day;
-  const exList = S.planData.exercises.filter(e => e.day_number === day);
-  S.dayExercises = exList;
+  if(ignoreSubs) S._pendingSubs = [];
+  // если есть pending замены и не ignore — не перезаписываем уже модифицированный S.dayExercises
+  // но если вызов из renderDayButtons/readiness — нужно взять свежий список
+  const needsFresh = !S.dayExercises || S.dayExercises.length===0 || S.dayExercises[0].day_number !== day || ignoreSubs;
+  if(needsFresh){
+    S.dayExercises = S.planData.exercises.filter(e => e.day_number === day);
+  }
+  // если остались pending (нажали Игнорировать уже очистили), ничего не делаем
+  showWarmupScreen();
+}
+function showWarmupScreen(){
+  const exList = S.dayExercises;
   
   let isLower = exList.some(e => ['quads','hamstrings','glutes'].includes(e.exercises.target_muscle));
   let isUpper = exList.some(e => ['chest','back','shoulders','biceps','triceps'].includes(e.exercises.target_muscle));
