@@ -332,7 +332,7 @@ async def check_readiness(req: ReadinessRequest):
                     "Content-Type": "application/json",
                 },
                 json={
-                    "model": "stealth/ox-alpha",
+                    "model": "google/gemini-2.0-flash-exp:free",
                     "messages": [
                         {"role": "system", "content": "You are a sports physiologist. Reply strictly in JSON, no markdown."},
                         {"role": "user",   "content": prompt},
