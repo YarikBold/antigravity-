@@ -24,7 +24,26 @@ SUPABASE_URL     = os.getenv("SUPABASE_URL", "")
 SUPABASE_KEY     = os.getenv("SUPABASE_KEY", "")
 OPENROUTER_KEY   = os.getenv("OPENROUTER_API_KEY", "")
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+# Lazy Supabase client — не падаем при старте если env пустой
+_supabase: Client | None = None
+
+def get_supabase() -> Client:
+    global _supabase
+    if _supabase is not None:
+        return _supabase
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        raise HTTPException(500, "Server misconfigured: SUPABASE_URL / SUPABASE_KEY missing. Check Render Environment Variables.")
+    try:
+        _supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+    except Exception as e:
+        raise HTTPException(500, f"Failed to init Supabase: {e}")
+    return _supabase
+
+# Для обратной совместимости — прокси свойство
+class _SupabaseProxy:
+    def __getattr__(self, name):
+        return getattr(get_supabase(), name)
+supabase = _SupabaseProxy()  # type: ignore
 
 app = FastAPI(title="Antigravity", version="0.1.0")
 app.add_middleware(
@@ -72,89 +91,130 @@ async def root():
     return FileResponse("index.html")
 
 
+@app.get("/health")
+async def health():
+    ok = bool(SUPABASE_URL and SUPABASE_KEY)
+    return {"status": "ok" if ok else "misconfigured", "supabase_configured": ok}
+
 @app.get("/api/user/{user_id}")
 async def get_user(user_id: int):
-    r = supabase.table("users").select("*").eq("id", user_id).execute()
-    if not r.data:
-        raise HTTPException(404, "User not found")
-    return r.data[0]
+    try:
+        r = get_supabase().table("users").select("*").eq("id", user_id).execute()
+        if not r.data:
+            raise HTTPException(404, "User not found")
+        return r.data[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"get_user failed: {e}")
 
 
 @app.get("/api/logs/{user_id}")
 async def get_logs(user_id: int):
-    return supabase.table("workout_logs").select("date").eq("user_id", user_id).execute().data
+    try:
+        return get_supabase().table("workout_logs").select("date").eq("user_id", user_id).execute().data
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"get_logs failed: {e}")
 
 @app.get("/api/plans")
 async def get_plans():
-    return supabase.table("workout_plans").select("*").execute().data
+    try:
+        return get_supabase().table("workout_plans").select("*").execute().data
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"get_plans failed: {e}")
 
 
 @app.get("/api/plan/{plan_id}")
 async def get_plan(plan_id: int):
-    plan = supabase.table("workout_plans").select("*").eq("id", plan_id).execute()
-    if not plan.data:
-        raise HTTPException(404, "Plan not found")
-    exercises = (
-        supabase.table("plan_exercises")
-        .select("*, exercises(*)")
-        .eq("plan_id", plan_id)
-        .order("day_number")
-        .execute()
-    )
-    return {"plan": plan.data[0], "exercises": exercises.data}
+    try:
+        sb = get_supabase()
+        plan = sb.table("workout_plans").select("*").eq("id", plan_id).execute()
+        if not plan.data:
+            raise HTTPException(404, "Plan not found")
+        exercises = (
+            sb.table("plan_exercises")
+            .select("*, exercises(*)")
+            .eq("plan_id", plan_id)
+            .order("day_number")
+            .execute()
+        )
+        return {"plan": plan.data[0], "exercises": exercises.data}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"get_plan failed: {e}")
 
 
 @app.get("/api/plan/{plan_id}/day/{day_number}")
 async def get_plan_day(plan_id: int, day_number: int):
-    return (
-        supabase.table("plan_exercises")
-        .select("*, exercises(*)")
-        .eq("plan_id", plan_id)
-        .eq("day_number", day_number)
-        .execute()
-        .data
-    )
+    try:
+        return (
+            get_supabase().table("plan_exercises")
+            .select("*, exercises(*)")
+            .eq("plan_id", plan_id)
+            .eq("day_number", day_number)
+            .execute()
+            .data
+        )
+    except Exception as e:
+        raise HTTPException(500, f"get_plan_day failed: {e}")
 
 
 @app.get("/api/exercises")
 async def get_all_exercises():
-    return supabase.table("exercises").select("*").execute().data
+    try:
+        return get_supabase().table("exercises").select("*").execute().data
+    except Exception as e:
+        raise HTTPException(500, f"get_all_exercises failed: {e}")
 
 
 @app.get("/api/last_weights/{user_id}")
 async def get_last_weights(user_id: int):
     """Most recent log per exercise for a given user."""
-    rows = (
-        supabase.table("workout_logs")
-        .select("exercise_id, weight, reps, rir, date")
-        .eq("user_id", user_id)
-        .order("date", desc=True)
-        .limit(200)
-        .execute()
-        .data
-    )
-    latest: dict = {}
-    for row in rows:
-        eid = row["exercise_id"]
-        if eid not in latest:
-            latest[eid] = row
-    return latest
+    try:
+        rows = (
+            get_supabase().table("workout_logs")
+            .select("exercise_id, weight, reps, rir, date")
+            .eq("user_id", user_id)
+            .order("date", desc=True)
+            .limit(200)
+            .execute()
+            .data
+        )
+        latest: dict = {}
+        for row in rows:
+            eid = row["exercise_id"]
+            if eid not in latest:
+                latest[eid] = row
+        return latest
+    except Exception as e:
+        raise HTTPException(500, f"get_last_weights failed: {e}")
 
 
 @app.patch("/api/user/{user_id}/schedule")
 async def update_schedule(user_id: int, req: UpdateScheduleRequest):
-    supabase.table("users").update({"schedule": req.schedule}).eq("id", user_id).execute()
-    return {"status": "ok"}
+    try:
+        get_supabase().table("users").update({"schedule": req.schedule}).eq("id", user_id).execute()
+        return {"status": "ok"}
+    except Exception as e:
+        raise HTTPException(500, f"update_schedule failed: {e}")
 
 @app.patch("/api/user/{user_id}/plan")
 async def update_user_plan(user_id: int, req: UpdatePlanRequest):
-    r = (
-        supabase.table("users")
-        .update({"current_plan_id": req.plan_id})
-        .eq("id", user_id)
-        .execute()
-    )
-    return {"status": "ok", "data": r.data}
+    try:
+        r = (
+            get_supabase().table("users")
+            .update({"current_plan_id": req.plan_id})
+            .eq("id", user_id)
+            .execute()
+        )
+        return {"status": "ok", "data": r.data}
+    except Exception as e:
+        raise HTTPException(500, f"update_user_plan failed: {e}")
 
 
 # ---------- Finish Workout + Progression ----------
@@ -162,57 +222,63 @@ async def update_user_plan(user_id: int, req: UpdatePlanRequest):
 @app.post("/api/finish_workout")
 async def finish_workout(req: FinishWorkoutRequest):
     """Log every set, then check progression per exercise."""
-    progressions = []
-    logged_count = 0
+    try:
+        sb = get_supabase()
+        progressions = []
+        logged_count = 0
 
-    user = supabase.table("users").select("current_plan_id").eq("id", req.user_id).execute()
-    plan_id = user.data[0]["current_plan_id"] if user.data else None
+        user = sb.table("users").select("current_plan_id").eq("id", req.user_id).execute()
+        plan_id = user.data[0]["current_plan_id"] if user.data else None
 
-    # 1. Log all sets
-    for s in req.sets:
-        supabase.table("workout_logs").insert({
-            "user_id":     req.user_id,
-            "exercise_id": s.exercise_id,
-            "weight":      s.weight,
-            "reps":        s.reps,
-            "rir":         s.rir,
-            "date":        datetime.utcnow().isoformat(),
-        }).execute()
-        logged_count += 1
+        # 1. Log all sets
+        for s in req.sets:
+            sb.table("workout_logs").insert({
+                "user_id":     req.user_id,
+                "exercise_id": s.exercise_id,
+                "weight":      s.weight,
+                "reps":        s.reps,
+                "rir":         s.rir,
+                "date":        datetime.utcnow().isoformat(),
+            }).execute()
+            logged_count += 1
 
-    # 2. Progression check (last set per exercise)
-    exercise_sets: dict[int, list[SetLog]] = {}
-    for s in req.sets:
-        exercise_sets.setdefault(s.exercise_id, []).append(s)
+        # 2. Progression check (last set per exercise)
+        exercise_sets: dict[int, list[SetLog]] = {}
+        for s in req.sets:
+            exercise_sets.setdefault(s.exercise_id, []).append(s)
 
-    if plan_id:
-        for eid, sets_list in exercise_sets.items():
-            last_set = sets_list[-1]
+        if plan_id:
+            for eid, sets_list in exercise_sets.items():
+                last_set = sets_list[-1]
 
-            plan_ex = (
-                supabase.table("plan_exercises")
-                .select("reps_target")
-                .eq("plan_id", plan_id)
-                .eq("exercise_id", eid)
-                .limit(1)
-                .execute()
-            )
-            if not plan_ex.data:
-                continue
+                plan_ex = (
+                    sb.table("plan_exercises")
+                    .select("reps_target")
+                    .eq("plan_id", plan_id)
+                    .eq("exercise_id", eid)
+                    .limit(1)
+                    .execute()
+                )
+                if not plan_ex.data:
+                    continue
 
-            rt = plan_ex.data[0]["reps_target"]
-            target_reps = int(rt.split("-")[1]) if "-" in rt else int(rt)
+                rt = plan_ex.data[0]["reps_target"]
+                target_reps = int(rt.split("-")[1]) if "-" in rt else int(rt)
 
-            excess_capacity = (last_set.reps + last_set.rir) - target_reps
-            if excess_capacity > 0 and last_set.weight > 0:
-                new_w = round(last_set.weight * (1 + (excess_capacity * 0.025)), 2)
-                progressions.append({
-                    "exercise_id": eid,
-                    "old_weight":  last_set.weight,
-                    "new_weight":  new_w,
-                })
+                excess_capacity = (last_set.reps + last_set.rir) - target_reps
+                if excess_capacity > 0 and last_set.weight > 0:
+                    new_w = round(last_set.weight * (1 + (excess_capacity * 0.025)), 2)
+                    progressions.append({
+                        "exercise_id": eid,
+                        "old_weight":  last_set.weight,
+                        "new_weight":  new_w,
+                    })
 
-    return {"status": "ok", "logged": logged_count, "progressions": progressions}
+        return {"status": "ok", "logged": logged_count, "progressions": progressions}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"finish_workout failed: {e}")
 
 
 # ---------- AI Readiness Check ----------
@@ -222,14 +288,15 @@ async def check_readiness(req: ReadinessRequest):
     if req.pain_level < 7:
         return {"status": "ok", "message": "Готов к тренировке!", "substitutions": []}
 
+    sb = get_supabase()
     day_ex = (
-        supabase.table("plan_exercises")
+        sb.table("plan_exercises")
         .select("*, exercises(*)")
         .eq("plan_id", req.plan_id)
         .eq("day_number", req.day_number)
         .execute()
     )
-    all_ex = supabase.table("exercises").select("*").execute()
+    all_ex = sb.table("exercises").select("*").execute()
 
     today_str = "\n".join([
         f"- ID {e['exercise_id']}: {e['exercises']['name']} "
