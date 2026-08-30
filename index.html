@@ -197,6 +197,42 @@
   </div>
 </section>
 
+<!-- Readiness Form (ТЗ: проверка DOMS перед тренировкой) -->
+<section id="readiness-form" class="section pt-6">
+  <button onclick="showSection('dashboard')" class="text-gray-400 hover:text-white text-sm mb-4">← Назад</button>
+  <h2 class="text-xl font-bold text-white mb-2">Проверка готовности</h2>
+  <p class="text-gray-400 text-sm mb-6">Есть крепатура (DOMS) или боль? Отметь где болит и оцени по 10-балльной шкале. ИИ подберёт замены.</p>
+
+  <div class="glass p-4 mb-4">
+    <div class="text-xs text-gray-400 uppercase tracking-wider mb-3">Где болит? (можно несколько)</div>
+    <div class="grid grid-cols-2 gap-2" id="sore-muscles-grid">
+      <label class="glass p-3 flex items-center gap-2 cursor-pointer text-sm"><input type="checkbox" value="chest" class="sore-cb"> Грудь</label>
+      <label class="glass p-3 flex items-center gap-2 cursor-pointer text-sm"><input type="checkbox" value="back" class="sore-cb"> Спина</label>
+      <label class="glass p-3 flex items-center gap-2 cursor-pointer text-sm"><input type="checkbox" value="shoulders" class="sore-cb"> Плечи</label>
+      <label class="glass p-3 flex items-center gap-2 cursor-pointer text-sm"><input type="checkbox" value="biceps" class="sore-cb"> Бицепс</label>
+      <label class="glass p-3 flex items-center gap-2 cursor-pointer text-sm"><input type="checkbox" value="triceps" class="sore-cb"> Трицепс</label>
+      <label class="glass p-3 flex items-center gap-2 cursor-pointer text-sm"><input type="checkbox" value="quads" class="sore-cb"> Квадрицепс</label>
+      <label class="glass p-3 flex items-center gap-2 cursor-pointer text-sm"><input type="checkbox" value="hamstrings" class="sore-cb"> Бедро заднее</label>
+      <label class="glass p-3 flex items-center gap-2 cursor-pointer text-sm"><input type="checkbox" value="glutes" class="sore-cb"> Ягодицы</label>
+    </div>
+  </div>
+
+  <div class="glass p-4 mb-4">
+    <div class="flex justify-between items-center mb-2">
+      <span class="text-xs text-gray-400 uppercase tracking-wider">Уровень боли</span>
+      <span class="text-purple font-bold" id="pain-value">1 / 10</span>
+    </div>
+    <input type="range" min="1" max="10" value="1" id="pain-level" class="w-full accent-purple-600" oninput="document.getElementById('pain-value').textContent = this.value + ' / 10'">
+    <div class="flex justify-between text-[10px] text-gray-500 mt-1"><span>1 — нет боли</span><span>10 — сильная</span></div>
+    <p class="text-xs text-gray-500 mt-2">Если &lt; 7 — ИИ не вызывается, сразу к разминке. Если ≥7 — AI stealth/ox-alpha подберёт замены.</p>
+  </div>
+
+  <button onclick="checkReadiness()" class="btn-primary mb-3" id="btn-check-readiness">Проверить 🔍</button>
+  <button onclick="skipReadiness()" class="btn-ghost w-full text-sm">Пропустить → Разминка</button>
+
+  <div id="readiness-result" class="hidden mt-4 glass p-4"></div>
+</section>
+
 <!-- Warmup Screen -->
 <section id="warmup-screen" class="section pt-10">
   <button onclick="showSection('dashboard')" class="text-gray-400 hover:text-white text-sm mb-4">← Отмена</button>
@@ -232,6 +268,27 @@
     <span class="text-gray-500">= в запасе 1-2 повт.,</span>
     <span class="text-purple font-mono">3+</span>
     <span class="text-gray-500">= легко.</span>
+  </div>
+
+  <!-- Rest Timer (ТЗ) -->
+  <div class="glass p-4 mb-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <span class="text-2xl">⏱️</span>
+      <div>
+        <div class="text-white font-bold text-lg font-mono" id="timer-display">01:30</div>
+        <div class="text-gray-500 text-xs">отдых между подходами</div>
+      </div>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="startRestTimer(90)" class="btn-ghost py-2 px-4 text-sm" id="btn-timer-start">Старт 90с</button>
+      <button onclick="resetTimer()" class="btn-ghost py-2 px-2 text-xs">Сброс</button>
+    </div>
+  </div>
+  <div class="flex gap-2 mb-4">
+    <button onclick="startRestTimer(60)" class="glass flex-1 py-2 text-xs">60с</button>
+    <button onclick="startRestTimer(90)" class="glass flex-1 py-2 text-xs">90с</button>
+    <button onclick="startRestTimer(120)" class="glass flex-1 py-2 text-xs">120с</button>
+    <button onclick="startRestTimer(180)" class="glass flex-1 py-2 text-xs">180с</button>
   </div>
   
   <div class="space-y-4" id="exercise-cards"></div>
@@ -420,7 +477,7 @@ function openDayFromCalendar(dayOffset) {
   const programDays = Array.from(new Set(S.planData.exercises.map(e => e.day_number))).sort((a,b)=>a-b);
   const dayNumber = programDays[scheduleIndex % programDays.length];
   
-  initWarmup(dayNumber);
+  initReadiness(dayNumber);
 }
 
 async function saveSchedule() {
@@ -482,9 +539,84 @@ function renderDayButtons() {
     let btn = document.createElement('button');
     btn.className = 'glass p-4 text-left card-hover';
     btn.innerHTML = `<div class="text-purple font-bold uppercase text-xs mb-1">День ${d}</div><div class="text-white font-bold">Начать</div>`;
-    btn.onclick = () => initWarmup(d);
+    btn.onclick = () => initReadiness(d);
     cont.appendChild(btn);
   });
+}
+
+// --- Readiness flow (ТЗ) ---
+function initReadiness(day) {
+  S.selectedDay = day;
+  S.dayExercises = S.planData.exercises.filter(e => e.day_number === day);
+  // reset form
+  document.querySelectorAll('.sore-cb').forEach(cb => cb.checked = false);
+  const pain = document.getElementById('pain-level'); if(pain) pain.value = 1;
+  const pv = document.getElementById('pain-value'); if(pv) pv.textContent = '1 / 10';
+  const res = document.getElementById('readiness-result'); if(res){ res.classList.add('hidden'); res.innerHTML=''; }
+  const btn = document.getElementById('btn-check-readiness'); if(btn) btn.textContent = 'Проверить 🔍';
+  showSection('readiness-form');
+}
+
+async function checkReadiness() {
+  const sore = Array.from(document.querySelectorAll('.sore-cb:checked')).map(cb=>cb.value);
+  const painEl = document.getElementById('pain-level');
+  const pain = painEl ? parseInt(painEl.value) : 1;
+  const btn = document.getElementById('btn-check-readiness');
+  const resDiv = document.getElementById('readiness-result');
+  if(btn) btn.textContent = 'AI думает...';
+  try {
+    const data = await api('/api/check_readiness', {
+      method: 'POST',
+      body: JSON.stringify({ user_id: S.userId, plan_id: S.user.current_plan_id, day_number: S.selectedDay, sore_muscles: sore, pain_level: pain })
+    });
+    if(resDiv){
+      resDiv.classList.remove('hidden');
+      if(data.status === 'ok'){
+        resDiv.innerHTML = `<div class="text-green-400 font-bold">✅ ${data.message}</div><button onclick="initWarmup(S.selectedDay)" class="btn-primary mt-3 w-full">К разминке →</button>`;
+      } else if(data.status === 'modified'){
+        S._pendingSubs = data.substitutions || [];
+        let subs = (S._pendingSubs||[]).map(s=>{
+          const orig = S.dayExercises.find(e=>e.exercise_id===s.original_exercise_id)?.exercises.name || s.original_exercise_id;
+          const repl = s.replacement_exercise_id;
+          return `<div class="glass p-2 mb-2 text-sm"><span class="text-red-400 line-through">${orig}</span> → <span class="text-green-400">${repl}</span><div class="text-gray-500 text-xs">${s.reason}</div></div>`;
+        }).join('');
+        resDiv.innerHTML = `
+          <div class="text-yellow-400 font-bold mb-2">⚠️ Найдены замены (pain ${pain}/10)</div>
+          ${subs || '<div class="text-gray-400 text-sm">Нет замен, но совет: '+(data.general_advice||'')+'</div>'}
+          ${data.general_advice?`<div class="text-gray-300 text-sm mt-2">💡 ${data.general_advice}</div>`:''}
+          <div class="grid grid-cols-2 gap-2 mt-3">
+            <button onclick="applySubstitutions()" class="btn-primary text-sm">Применить замены</button>
+            <button onclick="initWarmup(S.selectedDay)" class="btn-ghost text-sm">Игнорировать →</button>
+          </div>
+        `;
+      } else {
+        resDiv.innerHTML = `<div class="text-red-400">${data.message||'AI недоступен'}</div><button onclick="initWarmup(S.selectedDay)" class="btn-primary mt-3 w-full">К разминке →</button>`;
+      }
+    }
+  } catch(e){
+    alert('Ошибка: '+e.message);
+    if(resDiv){ resDiv.classList.remove('hidden'); resDiv.innerHTML = `<div class="text-red-400">Ошибка: ${e.message}</div><button onclick="initWarmup(S.selectedDay)" class="btn-ghost w-full mt-2">К разминке →</button>`; }
+  }
+  if(btn) btn.textContent = 'Проверить 🔍';
+}
+function skipReadiness(){ initWarmup(S.selectedDay); }
+async function applySubstitutions(subs){
+  subs = subs || S._pendingSubs || [];
+  // subs: [{original_exercise_id, replacement_exercise_id, reason}]
+  if(!subs || !subs.length) return initWarmup(S.selectedDay);
+  // fetch replacement exercise data
+  try{
+    const all = await api('/api/exercises');
+    const map = Object.fromEntries(all.map(e=>[e.id,e]));
+    subs.forEach(s=>{
+      const idx = S.dayExercises.findIndex(e=>e.exercise_id===s.original_exercise_id);
+      if(idx!==-1 && map[s.replacement_exercise_id]){
+        // replace exercise ref, keep sets/reps_target from original plan
+        S.dayExercises[idx] = { ...S.dayExercises[idx], exercise_id: s.replacement_exercise_id, exercises: map[s.replacement_exercise_id] };
+      }
+    });
+  }catch{}
+  initWarmup(S.selectedDay);
 }
 
 function initWarmup(day) {
@@ -520,12 +652,11 @@ function startWorkout() {
     let last = S.lastWeights[String(ex.exercise_id)];
     let defaultW = last ? last.weight : 0;
     
-    // Auto-progress suggested weight based on previous workout excess capacity
-    if (last && last.weight > 0) {
+    // ТЗ: если прошлый раз RIR>=1 и reps >= цели -> предлагаем +2.5 кг
+    if (last && last.weight > 0 && last.rir >= 1) {
       let tr = parseInt(ex.reps_target.split('-')[1] || ex.reps_target);
-      let excess = (last.reps + last.rir) - tr;
-      if (excess > 0) {
-        defaultW = parseFloat((last.weight * (1 + (excess * 0.025))).toFixed(2));
+      if (last.reps >= tr) {
+        defaultW = parseFloat((last.weight + 2.5).toFixed(2));
       }
     }
     
@@ -539,8 +670,37 @@ function startWorkout() {
   if (dayLabel) dayLabel.textContent = 'День ' + S.selectedDay;
   renderWorkoutBadge();
   renderExerciseCards();
+  resetTimer();
   showSection('active-workout');
 }
+
+// --- Rest Timer (ТЗ) ---
+let timerInterval = null;
+let timerRemaining = 90;
+function formatTimer(s){ const m=Math.floor(s/60).toString().padStart(2,'0'); const sec=(s%60).toString().padStart(2,'0'); return `${m}:${sec}`; }
+function updateTimerDisplay(){ const el=document.getElementById('timer-display'); if(el) el.textContent = formatTimer(timerRemaining); }
+function startRestTimer(seconds){
+  if(seconds) timerRemaining = seconds;
+  if(timerInterval) clearInterval(timerInterval);
+  updateTimerDisplay();
+  const btn=document.getElementById('btn-timer-start');
+  timerInterval=setInterval(()=>{
+    timerRemaining--;
+    updateTimerDisplay();
+    if(timerRemaining<=0){
+      clearInterval(timerInterval); timerInterval=null;
+      if(btn) btn.textContent = 'Готово! 🔔';
+      // вибрация + звук
+      try{ navigator.vibrate && navigator.vibrate([200,100,200]); }catch{}
+      try{ const ctx=new (window.AudioContext||window.webkitAudioContext)(); const o=ctx.createOscillator(); o.frequency.value=880; o.connect(ctx.destination); o.start(); setTimeout(()=>o.stop(),400);}catch{}
+      setTimeout(()=>{ if(btn) btn.textContent='Старт 90с'; resetTimer(); },3000);
+    }
+  },1000);
+  if(btn) btn.textContent='Пауза';
+  // повторный клик = пауза
+  if(btn) btn.onclick = ()=>{ if(timerInterval){ clearInterval(timerInterval); timerInterval=null; btn.textContent='Продолжить'; btn.onclick=()=>startRestTimer(); } else { startRestTimer(); } };
+}
+function resetTimer(){ if(timerInterval){ clearInterval(timerInterval); timerInterval=null; } timerRemaining=90; updateTimerDisplay(); const btn=document.getElementById('btn-timer-start'); if(btn){ btn.textContent='Старт 90с'; btn.onclick=()=>startRestTimer(90); } }
 
 function renderWorkoutBadge() {
   const badge = document.getElementById('workout-badge');
@@ -596,7 +756,9 @@ window.done = (eid, idx) => {
   s.done = true; 
   let next = S.workoutSets[eid][idx+1];
   if(next && next.weight === '') next.weight = s.weight;
-  renderExerciseCards(); 
+  renderExerciseCards();
+  // ТЗ: таймер отдыха стартует автоматически
+  startRestTimer(90);
 };
 
 async function finishWorkout() {

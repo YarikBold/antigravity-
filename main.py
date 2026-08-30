@@ -263,11 +263,12 @@ async def finish_workout(req: FinishWorkoutRequest):
                     continue
 
                 rt = plan_ex.data[0]["reps_target"]
+                # ТЗ: цель = верхняя граница диапазона (8-12 -> 12)
                 target_reps = int(rt.split("-")[1]) if "-" in rt else int(rt)
 
-                excess_capacity = (last_set.reps + last_set.rir) - target_reps
-                if excess_capacity > 0 and last_set.weight > 0:
-                    new_w = round(last_set.weight * (1 + (excess_capacity * 0.025)), 2)
+                # ТЗ строго: RIR >= 1 и выполнены целевые повторения -> +2.5 кг
+                if last_set.rir >= 1 and last_set.reps >= target_reps and last_set.weight > 0:
+                    new_w = round(last_set.weight + 2.5, 2)
                     progressions.append({
                         "exercise_id": eid,
                         "old_weight":  last_set.weight,
