@@ -286,6 +286,16 @@
     <span class="text-gray-500">= легко.</span>
   </div>
 
+  <!-- Progression hint - нельзя убрать крестиком, только кликом пропадает -->
+  <div id="progression-hint" onclick="dismissProgressionHint()" class="glass p-3 mb-4 flex items-center gap-3 cursor-pointer" style="border-left:3px solid #22C55E">
+    <div class="w-8 h-8 rounded-lg bg-green-500/15 flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941"/></svg></div>
+    <div class="flex-1">
+      <div class="text-white font-bold text-xs">Авто-прогрессия: введи 1 подход</div>
+      <div class="text-gray-400 text-[11px] leading-tight">Формула ТЗ: если в подходе RIR ≥1 и повторы ≥ цели (напр. 12) → следующий подход и след. тренировка предложит <span class="text-green-400 font-bold">+2.5 кг</span>. Нажми чтобы скрыть.</div>
+    </div>
+    <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+  </div>
+
   <!-- Rest Timer (ТЗ) -->
   <div class="glass p-4 mb-4 flex items-center justify-between">
     <div class="flex items-center gap-3">
@@ -776,31 +786,66 @@ function renderExerciseCards() {
   cont.innerHTML = '';
   S.dayExercises.forEach(ex => {
     let e = ex.exercises;
+    // подсказка прошлого подхода (запоминает последний подход и показывает в след. тренировке)
+    const last = S.lastWeights[String(ex.exercise_id)];
+    const tr = parseInt(ex.reps_target.split('-')[1] || ex.reps_target);
+    let lastHint = '';
+    if(last){
+      const willProgress = last.rir >= 1 && last.reps >= tr && last.weight > 0;
+      const suggested = willProgress ? (parseFloat(last.weight) + 2.5).toFixed(1) : last.weight;
+      lastHint = `<div class="text-[11px] mb-2 px-2 py-1 rounded bg-black/20 flex items-center gap-2">
+        <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m15 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span class="text-gray-400">Прошлый раз:</span> <span class="text-white font-mono font-bold">${last.weight}кг ×${last.reps} RIR${last.rir}</span>
+        ${willProgress ? `<span class="text-green-400">→ рекомендуем ${suggested}кг</span>` : `<span class="text-gray-500">· цель ${ex.reps_target}</span>`}
+      </div>`;
+    } else {
+      lastHint = `<div class="text-[11px] mb-2 text-gray-500">Первый раз — введи вес, мы запомним для след. тренировки</div>`;
+    }
     let setsHTML = S.workoutSets[ex.exercise_id].map((s,i) => `
       <div class="set-row flex items-center gap-2 p-2 rounded-lg border border-transparent ${s.done?'done':''}">
         <span class="text-xs text-gray-500 w-4">#${i+1}</span>
-        <input type="number" step="0.5" value="${s.weight !== '' ? s.weight : ''}" class="input-dark py-1 text-center" onchange="upd(${ex.exercise_id},${i},'weight',this.value)">
+        <input type="number" step="0.5" value="${s.weight !== '' ? s.weight : ''}" placeholder="${last ? last.weight : ''}" class="input-dark py-1 text-center" onchange="upd(${ex.exercise_id},${i},'weight',this.value)">
         <span class="text-xs">×</span>
-        <input type="number" value="${s.reps !== '' ? s.reps : ''}" class="input-dark py-1 text-center" onchange="upd(${ex.exercise_id},${i},'reps',this.value)">
+        <input type="number" value="${s.reps !== '' ? s.reps : ''}" placeholder="${last ? last.reps : ''}" class="input-dark py-1 text-center" onchange="upd(${ex.exercise_id},${i},'reps',this.value)">
         <span class="text-xs">RIR</span>
-        <input type="number" value="${s.rir !== '' ? s.rir : ''}" class="input-dark py-1 text-center" onchange="upd(${ex.exercise_id},${i},'rir',this.value)">
-        <button onclick="done(${ex.exercise_id},${i})" class="w-8 h-8 rounded bg-purple/20 text-purple">✓</button>
+        <input type="number" value="${s.rir !== '' ? s.rir : ''}" placeholder="${last ? last.rir : 2}" class="input-dark py-1 text-center" onchange="upd(${ex.exercise_id},${i},'rir',this.value)">
+        <button onclick="done(${ex.exercise_id},${i})" class="w-8 h-8 rounded bg-purple/20 text-purple flex items-center justify-center"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></button>
       </div>`).join('');
       
-    cont.innerHTML += `<div class="glass p-4 border-l-4 border-purple"><div class="text-white font-bold mb-2">${e.name} <span class="text-xs text-gray-500 font-normal">(${ex.sets}×${ex.reps_target})</span></div>${setsHTML}</div>`;
+    cont.innerHTML += `<div class="glass p-4 border-l-4 border-purple"><div class="text-white font-bold mb-2">${e.name} <span class="text-xs text-gray-500 font-normal">(${ex.sets}×${ex.reps_target})</span></div>${lastHint}${setsHTML}</div>`;
   });
+  // показать баннер прогрессии если не скрыт
+  const hint = document.getElementById('progression-hint');
+  if(hint){
+    const dismissed = localStorage.getItem('prog_hint_dismissed') === '1';
+    hint.classList.toggle('hidden', dismissed);
+  }
 }
 
 window.upd = (eid, idx, field, val) => {
   const num = parseFloat(val);
   S.workoutSets[eid][idx][field] = isNaN(num) ? '' : num;
 };
+function dismissProgressionHint(){
+  const h = document.getElementById('progression-hint');
+  if(h) h.classList.add('hidden');
+  localStorage.setItem('prog_hint_dismissed','1');
+}
 window.done = (eid, idx) => { 
   let s = S.workoutSets[eid][idx]; 
   if(s.weight === '' || s.reps === '' || s.reps <= 0) return alert('Введи вес и повторения (>0)');
   s.done = true; 
   let next = S.workoutSets[eid][idx+1];
-  if(next && next.weight === '') next.weight = s.weight;
+  if(next && (next.weight === '' || next.weight === 0)){
+    // подсказка для следующего подхода по формуле ТЗ
+    const ex = S.dayExercises.find(x=>x.exercise_id===eid);
+    const tr = ex ? parseInt(ex.reps_target.split('-')[1] || ex.reps_target) : 0;
+    if(s.rir >= 1 && s.reps >= tr && s.weight > 0){
+      next.weight = parseFloat((parseFloat(s.weight) + 2.5).toFixed(2));
+    } else {
+      next.weight = s.weight;
+    }
+  }
   renderExerciseCards();
   // ТЗ: таймер отдыха стартует автоматически
   startRestTimer(90);
