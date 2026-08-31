@@ -347,7 +347,7 @@ async function api(path, opts={}) {
   const r = await fetch(path, { headers: {'Content-Type':'application/json'}, ...opts });
   if (!r.ok) {
     let detail = '';
-    try { const j = await r.json(); detail = j.detail || j.message || JSON.stringify(j); } catch {}
+    try { const j = await r.json(); let d = j.detail || j.message || j; detail = (typeof d === 'string') ? d : JSON.stringify(d); } catch {}
     try { if(!detail) detail = await r.text(); } catch {}
     throw new Error('API ' + r.status + (detail ? ': ' + detail : ''));
   }

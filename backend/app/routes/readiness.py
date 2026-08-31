@@ -19,8 +19,8 @@ class ReadinessRequest(BaseModel):
     cns_fatigue: Optional[int] = None
 
 class LegacyReadinessRequest(BaseModel):
-    user_id: int
-    plan_id: int
+    user_id: str  # accept UUID or int-as-string for backward compat
+    plan_id: str
     day_number: int
     sore_muscles: List[str]
     pain_level: int
