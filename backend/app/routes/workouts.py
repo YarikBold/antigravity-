@@ -23,14 +23,14 @@ class CompleteRequest(BaseModel):
     sets: List[SetLog]
 
 class LegacySetLog(BaseModel):
-    exercise_id: int
+    exercise_id: str  # accept UUID or int string
     set_number: int
     weight: float
     reps: int
     rir: int
 
 class LegacyFinishRequest(BaseModel):
-    user_id: int
+    user_id: str
     day_number: int
     sets: List[LegacySetLog]
 

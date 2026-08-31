@@ -170,6 +170,25 @@ async def get_plans():
     except Exception as e:
         raise HTTPException(500, str(e))
 
+def _normalize_plan_exercises(rows):
+    """Add legacy aliases so old frontend (sets/reps_target) works with new schema (target_sets/target_reps) and vice versa."""
+    for r in rows or []:
+        if "target_sets" in r and "sets" not in r:
+            r["sets"] = r["target_sets"]
+        if "sets" in r and "target_sets" not in r:
+            r["target_sets"] = r["sets"]
+        if "target_reps" in r and "reps_target" not in r:
+            r["reps_target"] = r["target_reps"]
+        if "reps_target" in r and "target_reps" not in r:
+            r["target_reps"] = r["reps_target"]
+        # fallback defaults
+        r.setdefault("sets", r.get("target_sets", 3))
+        r.setdefault("target_sets", r.get("sets", 3))
+        r.setdefault("reps_target", r.get("target_reps", "8-12"))
+        r.setdefault("target_reps", r.get("reps_target", "8-12"))
+        r.setdefault("suggested_method", r.get("suggested_method", "normal"))
+    return rows
+
 @app.get("/api/plan/{plan_id}")
 async def get_plan(plan_id: str):
     sb = get_supabase()
@@ -177,14 +196,19 @@ async def get_plan(plan_id: str):
         plan = sb.table("workout_plans").select("*").eq("id", plan_id).execute()
         if not plan.data:
             # legacy int
-            plan = sb.table("workout_plans").select("*").eq("id", int(plan_id)).execute()
+            try:
+                plan = sb.table("workout_plans").select("*").eq("id", int(plan_id)).execute()
+            except: pass
         if not plan.data:
             raise HTTPException(404, "Plan not found")
         exercises = sb.table("plan_exercises").select("*, exercises(*)").eq("plan_id", plan_id).order("order_index").execute()
         if not exercises.data:
             exercises = sb.table("plan_exercises").select("*, exercises(*)").eq("plan_id", plan_id).order("day_number").execute()
-            if not exercises.data and plan_id.isdigit():
-                exercises = sb.table("plan_exercises").select("*, exercises(*)").eq("plan_id", int(plan_id)).order("day_number").execute()
+            if not exercises.data and str(plan_id).isdigit():
+                try:
+                    exercises = sb.table("plan_exercises").select("*, exercises(*)").eq("plan_id", int(plan_id)).order("day_number").execute()
+                except: pass
+        _normalize_plan_exercises(exercises.data)
         return {"plan": plan.data[0], "exercises": exercises.data}
     except HTTPException:
         raise
@@ -195,10 +219,12 @@ async def get_plan(plan_id: str):
 async def get_plan_day(plan_id: str, day_number: int):
     sb = get_supabase()
     try:
-        return sb.table("plan_exercises").select("*, exercises(*)").eq("plan_id", plan_id).eq("day_number", day_number).order("order_index").execute().data
+        data = sb.table("plan_exercises").select("*, exercises(*)").eq("plan_id", plan_id).eq("day_number", day_number).order("order_index").execute().data
+        return _normalize_plan_exercises(data)
     except Exception:
         try:
-            return sb.table("plan_exercises").select("*, exercises(*)").eq("plan_id", int(plan_id)).eq("day_number", day_number).execute().data
+            data = sb.table("plan_exercises").select("*, exercises(*)").eq("plan_id", int(plan_id)).eq("day_number", day_number).execute().data
+            return _normalize_plan_exercises(data)
         except Exception as e:
             raise HTTPException(500, str(e))
 
