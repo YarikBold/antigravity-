@@ -29,13 +29,13 @@ function renderExerciseCards(){
     let setsHTML=S.workoutSets[ex.exercise_id].map((s,i)=>`
       <div class="set-row flex items-center gap-2 p-2 rounded-lg border border-transparent ${s.done?'done':''}">
         <span class="text-xs text-gray-500 w-4">#${i+1}</span>
-        <input type="number" step="0.5" value="${s.weight!==''?s.weight:''}" placeholder="${last?last.weight:''}" class="input-dark py-1 text-center" onchange="upd(${JSON.stringify(ex.exercise_id)},${i},'weight',this.value)">
+        <input type="number" step="0.5" value="${s.weight!==''?s.weight:''}" placeholder="${last?last.weight:''}" class="input-dark py-1 text-center" onchange="upd('${ex.exercise_id}',${i},'weight',this.value)">
         <span class="text-xs">×</span>
-        <input type="number" value="${s.reps!==''?s.reps:''}" placeholder="${last?last.reps:''}" class="input-dark py-1 text-center" onchange="upd(${JSON.stringify(ex.exercise_id)},${i},'reps',this.value)">
+        <input type="number" value="${s.reps!==''?s.reps:''}" placeholder="${last?last.reps:''}" class="input-dark py-1 text-center" onchange="upd('${ex.exercise_id}',${i},'reps',this.value)">
         <span class="text-xs">RIR</span>
-        <input type="number" value="${s.rir!==''?s.rir:''}" placeholder="${last?last.rir:2}" class="input-dark py-1 text-center" onchange="upd(${JSON.stringify(ex.exercise_id)},${i},'rir',this.value)">
-        <select onchange="upd(${JSON.stringify(ex.exercise_id)},${i},'set_type',this.value)" class="input-dark py-1 text-center text-xs w-20"><option value="normal" ${s.set_type==='normal'?'selected':''}>norm</option><option value="drop_set" ${s.set_type==='drop_set'?'selected':''}>drop</option><option value="rest_pause" ${s.set_type==='rest_pause'?'selected':''}>rest</option><option value="pyramid" ${s.set_type==='pyramid'?'selected':''}>pyr</option></select>
-        <button onclick="done(${JSON.stringify(ex.exercise_id)},${i})" class="w-8 h-8 rounded bg-purple/20 text-purple flex items-center justify-center"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></button>
+        <input type="number" value="${s.rir!==''?s.rir:''}" placeholder="${last?last.rir:2}" class="input-dark py-1 text-center" onchange="upd('${ex.exercise_id}',${i},'rir',this.value)">
+        <select onchange="upd('${ex.exercise_id}',${i},'set_type',this.value)" class="input-dark py-1 text-center text-xs w-20"><option value="normal" ${s.set_type==='normal'?'selected':''}>norm</option><option value="drop_set" ${s.set_type==='drop_set'?'selected':''}>drop</option><option value="rest_pause" ${s.set_type==='rest_pause'?'selected':''}>rest</option><option value="pyramid" ${s.set_type==='pyramid'?'selected':''}>pyr</option></select>
+        <button onclick="done('${ex.exercise_id}',${i})" class="w-8 h-8 rounded bg-purple/20 text-purple flex items-center justify-center"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></button>
       </div>`).join('');
     cont.innerHTML+=`<div class="glass p-4 border-l-4 border-purple"><div class="text-white font-bold mb-2">${e.name} <span class="text-xs text-gray-500 font-normal">(${ex.target_sets||ex.sets}×${ex.target_reps||ex.reps_target})</span> <span class="text-[10px] px-1.5 py-0.5 rounded bg-purple/20 text-purple">${e.movement_pattern|| e.mechanics||''}</span></div>${lastHint}${setsHTML}</div>`;
   });
