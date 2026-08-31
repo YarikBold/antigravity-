@@ -149,14 +149,18 @@ async def get_user(user_id: str):
 @app.get("/api/logs/{user_id}")
 async def get_logs(user_id: str):
     sb = get_supabase()
-    try:
-        # new schema: workout_logs has date column
-        return sb.table("workout_logs").select("date").eq("user_id", user_id).execute().data
-    except Exception:
+    uid = LEGACY_ID_MAP.get(str(user_id), str(user_id))
+    for cand in [uid, str(user_id)]:
         try:
-            return sb.table("workout_logs").select("date").eq("user_id", int(user_id)).execute().data
-        except Exception as e:
-            raise HTTPException(500, str(e))
+            return sb.table("workout_logs").select("date").eq("user_id", cand).execute().data
+        except Exception:
+            pass
+        if cand.isdigit():
+            try:
+                return sb.table("workout_logs").select("date").eq("user_id", int(cand)).execute().data
+            except Exception:
+                pass
+    return []
 
 @app.get("/api/plans")
 async def get_plans():
@@ -209,34 +213,81 @@ async def get_all_exercises():
 @app.get("/api/last_weights/{user_id}")
 async def get_last_weights(user_id: str):
     sb = get_supabase()
-    try:
-        # try new workout_sets join
+    # normalize 1/2 -> UUID
+    uid = LEGACY_ID_MAP.get(str(user_id), str(user_id))
+    candidates = [uid, str(user_id)]
+    if str(user_id).isdigit():
+        candidates.append(LEGACY_ID_MAP.get(str(user_id)))
+    # dedup
+    candidates = [c for c in dict.fromkeys(candidates) if c]
+
+    # Try new schema (workout_logs -> workout_sets)
+    for cand in candidates:
         try:
-            # new: via workout_logs -> workout_sets
-            logs = sb.table("workout_logs").select("id").eq("user_id", user_id).order("date", desc=True).limit(10).execute().data
+            logs = sb.table("workout_logs").select("id").eq("user_id", cand).order("date", desc=True).limit(20).execute().data
             if logs:
                 latest = {}
                 for log in logs:
-                    sets = sb.table("workout_sets").select("exercise_id, weight, reps, rir").eq("log_id", log["id"]).execute().data
+                    try:
+                        sets = sb.table("workout_sets").select("exercise_id, weight, reps, rir").eq("log_id", log["id"]).execute().data
+                    except Exception:
+                        continue
                     for s in sets:
                         if s["exercise_id"] not in latest:
                             latest[s["exercise_id"]] = s
                 if latest:
                     return latest
+                # if logs exist but no sets yet, return empty (no crash)
+                return {}
         except Exception:
             pass
-        # fallback legacy: workout_logs directly has exercise_id, weight, reps, rir
-        rows = sb.table("workout_logs").select("exercise_id, weight, reps, rir, date").eq("user_id", user_id).order("date", desc=True).limit(200).execute().data
-        if not rows and user_id.isdigit():
-            rows = sb.table("workout_logs").select("exercise_id, weight, reps, rir, date").eq("user_id", int(user_id)).order("date", desc=True).limit(200).execute().data
-        latest = {}
-        for r in rows:
-            eid = str(r["exercise_id"])
-            if eid not in latest:
-                latest[eid] = r
-        return latest
-    except Exception as e:
-        raise HTTPException(500, str(e))
+        # also try int form for legacy DB
+        if cand.isdigit():
+            try:
+                logs = sb.table("workout_logs").select("id").eq("user_id", int(cand)).order("date", desc=True).limit(20).execute().data
+                if logs:
+                    latest = {}
+                    for log in logs:
+                        sets = sb.table("workout_sets").select("exercise_id, weight, reps, rir").eq("log_id", log["id"]).execute().data
+                        for s in sets:
+                            if s["exercise_id"] not in latest:
+                                latest[s["exercise_id"]] = s
+                    if latest:
+                        return latest
+                    return {}
+            except Exception:
+                pass
+
+    # Fallback legacy: workout_logs has exercise_id directly (old DB) - wrap so missing column doesn't 500
+    for cand in candidates:
+        try:
+            rows = sb.table("workout_logs").select("exercise_id, weight, reps, rir, date").eq("user_id", cand).order("date", desc=True).limit(200).execute().data
+            latest = {}
+            for r in rows:
+                eid = str(r["exercise_id"])
+                if eid not in latest:
+                    latest[eid] = r
+            return latest
+        except Exception as e:
+            # column does not exist on new schema -> ignore, return empty instead of 500
+            if "does not exist" in str(e) or "42703" in str(e):
+                continue
+            pass
+        if cand.isdigit():
+            try:
+                rows = sb.table("workout_logs").select("exercise_id, weight, reps, rir, date").eq("user_id", int(cand)).order("date", desc=True).limit(200).execute().data
+                latest = {}
+                for r in rows:
+                    eid = str(r["exercise_id"])
+                    if eid not in latest:
+                        latest[eid] = r
+                return latest
+            except Exception as e:
+                if "does not exist" in str(e):
+                    continue
+                pass
+    # nothing found -> empty is valid (first workout)
+    return {}
 
 @app.patch("/api/user/{user_id}/schedule")
 async def update_schedule(user_id: str, req: UpdateScheduleRequest):
