@@ -326,7 +326,7 @@
   
   <div class="space-y-4" id="exercise-cards"></div>
   <div class="glass p-4 mt-4">
-    <div class="text-xs text-gray-400 uppercase tracking-wider mb-2">Финишер (HIIT)</div>
+    <div class="text-xs text-gray-400 uppercase tracking-wider mb-2">Финишер (HIIT) — добей мышцу в конце</div>
     <div class="grid grid-cols-2 gap-2">
       <button onclick="startFinisher('tabata')" class="btn-ghost text-xs">Табата 20/10×8</button>
       <button onclick="startFinisher('30-30')" class="btn-ghost text-xs">30/30×10</button>
@@ -335,6 +335,38 @@
       <button onclick="startFinisher('amrap')" class="btn-ghost text-xs col-span-2">AMRAP 10м</button>
     </div>
   </div>
+
+  <!-- Памятка: методы и финишеры -->
+  <div class="glass p-0 mt-4 overflow-hidden">
+    <button onclick="toggleCheatSheet()" class="w-full flex items-center justify-between p-4 text-left hover:bg-white/5 transition">
+      <span class="text-sm font-bold text-white flex items-center gap-2"><svg class="w-4 h-4 text-purple" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.5 14.5 12 12m0 0 2.5 2.5M12 12V3m0 9-2.5-2.5M12 12l2.5-2.5M12 21a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 12a3 3 0 0 1-3-3V7a3 3 0 0 1 6 0v2a3 3 0 0 1-3 3Z"/></svg> Памятка: что такое методы и финишеры?</span>
+      <span id="cheat-icon" class="text-purple text-xs transition-transform">▼</span>
+    </button>
+    <div id="cheat-sheet" class="hidden px-4 pb-4 space-y-4 text-xs leading-relaxed border-t border-white/5 pt-4">
+      <div>
+        <div class="text-purple font-bold uppercase tracking-wider mb-2">Продвинутые методы — выбирай в подходе (селект norm/drop/rest/pyr)</div>
+        <div class="space-y-2">
+          <div class="flex gap-2"><span class="px-1.5 py-0.5 rounded bg-white/10 text-white font-mono text-[10px] h-fit">norm</span><span><b>normal</b> — обычные прямые подходы. Отдых 90-120с. База.</span></div>
+          <div class="flex gap-2"><span class="px-1.5 py-0.5 rounded bg-pink/20 text-pink font-mono text-[10px] h-fit">drop</span><span><b>drop_set</b> — дошёл до отказа → сразу снизь вес на 20-30% и добей ещё 6-8 повторов без отдыха. Для пампа и добивки. Пример: 50кг×8 → скинул до 35кг×8.</span></div>
+          <div class="flex gap-2"><span class="px-1.5 py-0.5 rounded bg-pink/20 text-pink font-mono text-[10px] h-fit">rest</span><span><b>rest_pause</b> — сделал до отказа → 15-20с пауза → ещё 2-3 повтора → ещё пауза. Для силы когда не хватает на полный подход.</span></div>
+          <div class="flex gap-2"><span class="px-1.5 py-0.5 rounded bg-pink/20 text-pink font-mono text-[10px] h-fit">pyr</span><span><b>pyramid</b> — наращиваешь вес каждый подход: 12×40кг →10×50кг →8×60кг. Последний тяжёлый. Система уже подсказывает когда сделать.</span></div>
+          <div class="flex gap-2"><span class="px-1.5 py-0.5 rounded bg-purple/20 text-purple font-mono text-[10px] h-fit">sugg</span><span>Розовый бейдж <span class="px-1 rounded bg-pink/20 text-pink">drop/rest/pyramid</span> у упражнения — рекомендация из плана (seed). Можешь оставить или поменять селектом.</span></div>
+        </div>
+      </div>
+      <div class="pt-3 border-t border-white/5">
+        <div class="text-pink font-bold uppercase tracking-wider mb-2">Финишер HIIT — 4-10 мин в конце тренировки</div>
+        <div class="space-y-2 text-gray-300">
+          <div><b class="text-white">Табата 20/10×8</b> — 20с максимум →10с отдых, 8 раундов =4мин. Выбери берпи/байк/присед. Жжёт калории, добивает.</div>
+          <div><b class="text-white">30/30×10</b> — 30с работа /30с отдых, 10 раундов =10мин. Умеренно, для выносливости.</div>
+          <div><b class="text-white">Пирамида 15-45</b> — 15с →30с →45с →30с →15с работы, между ними 15с отдых. Волна нагрузки.</div>
+          <div><b class="text-white">EMOM 12м</b> — Every Minute On the Minute: каждую минуту 40с работа /20с отдых, 12 минут. Держи темп, не спеши.</div>
+          <div><b class="text-white">AMRAP 10м</b> — As Many Rounds As Possible: 10 мин без пауз, делай максимум кругов (напр. 5 отжиманий+10 приседов). Запиши результат и бей его в след. раз.</div>
+          <div class="text-[11px] text-gray-500 bg-black/20 p-2 rounded">Нажми кнопку финишера → откроется таймер на весь экран со звуком/вибрацией на смену интервала → Стоп вернёт в тренировку. Финишер опционален, делай 1-2 раза в неделю.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="mt-8">
     <button onclick="finishWorkout()" class="btn-primary flex items-center justify-center gap-2" id="btn-finish"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Завершить</button>
   </div>
@@ -796,6 +828,7 @@ const FINISHER_PRESETS={ tabata:{label:'Табата', work:20, rest:10, rounds:
 function startFinisher(mode){ const preset=FINISHER_PRESETS[mode]; if(!preset) return; finisherState={mode, round:1, isWork:true, remaining: preset.seq?preset.seq[0]:preset.work, total:preset.rounds*2}; if(mode==='pyramid'){ finisherState.seq=preset.seq; finisherState.seqIdx=0; finisherState.total=preset.seq.length*2-1; } if(mode==='amrap'){ finisherState.remaining=preset.work; } const lbl=document.getElementById('finisher-mode-label'); if(lbl) lbl.textContent=preset.label; showSection('finisher-screen'); runFinisherTick(); }
 function runFinisherTick(){ if(finisherInterval) clearInterval(finisherInterval); const display=document.getElementById('finisher-display'); const roundEl=document.getElementById('finisher-round'); const bar=document.getElementById('finisher-bar'); const ring=document.getElementById('finisher-ring'); const preset=FINISHER_PRESETS[finisherState.mode]; finisherInterval=setInterval(()=>{ finisherState.remaining--; if(display) display.textContent=formatTimer(finisherState.remaining); if(roundEl) roundEl.textContent=`Раунд ${finisherState.round}/${preset.rounds||preset.seq?.length||1} — ${finisherState.isWork?'Работа':'Отдых'}`; if(finisherState.remaining<=0){ try{ const ctx=new (window.AudioContext||window.webkitAudioContext)(); const o=ctx.createOscillator(); o.frequency.value=finisherState.isWork?660:440; o.connect(ctx.destination); o.start(); setTimeout(()=>o.stop(),200);}catch{} try{ navigator.vibrate&&navigator.vibrate(120);}catch{} if(finisherState.mode==='tabata' || finisherState.mode==='30-30' || finisherState.mode==='emom'){ if(!finisherState.isWork){ finisherState.round++; if(finisherState.round>preset.rounds){ clearInterval(finisherInterval); finisherState.mode=null; if(display) display.textContent='Готово!'; setTimeout(()=>showSection('workout-complete'),1500); return; } } finisherState.isWork=!finisherState.isWork; finisherState.remaining=finisherState.isWork?preset.work:preset.rest; } else if(finisherState.mode==='pyramid'){ let nextIsWork=!finisherState.isWork; let nextRemaining; if(nextIsWork){ finisherState.seqIdx++; if(finisherState.seqIdx>=preset.seq.length){ clearInterval(finisherInterval); if(display) display.textContent='Готово!'; setTimeout(()=>showSection('workout-complete'),1500); return; } nextRemaining=preset.seq[finisherState.seqIdx]; } else nextRemaining=preset.rest; finisherState.isWork=nextIsWork; finisherState.remaining=nextRemaining; } else if(finisherState.mode==='amrap'){ clearInterval(finisherInterval); if(display) display.textContent='Время!'; setTimeout(()=>showSection('workout-complete'),1500); return; } if(ring) ring.classList.toggle('active', finisherState.isWork); } },1000); }
 function stopFinisher(){ if(finisherInterval){ clearInterval(finisherInterval); finisherInterval=null; } showSection('active-workout'); }
+function toggleCheatSheet(){ const s=document.getElementById('cheat-sheet'); const i=document.getElementById('cheat-icon'); if(!s) return; s.classList.toggle('hidden'); if(i) i.textContent=s.classList.contains('hidden')?'▼':'▲'; }
 
 function renderWorkoutBadge() {
   const badge = document.getElementById('workout-badge');
