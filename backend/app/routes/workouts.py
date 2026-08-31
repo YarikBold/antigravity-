@@ -159,6 +159,44 @@ async def list_plans():
     sb=get_supabase()
     return sb.table("workout_plans").select("*").execute().data
 
+class SwapRequest(BaseModel):
+    exercise_id: str
+    exclude_ids: List[str] = []
+
+@router.post("/swap-exercise")
+async def swap_exercise(req: SwapRequest):
+    """Instant Machine Swap: same movement_pattern, different equipment"""
+    sb=get_supabase()
+    cur = sb.table("exercises").select("*").eq("id", req.exercise_id).limit(1).execute()
+    if not cur.data:
+        raise HTTPException(404, "Exercise not found")
+    cur_ex = cur.data[0]
+    # candidates with same movement_pattern
+    try:
+        alts = sb.table("exercises").select("*").eq("movement_pattern", cur_ex["movement_pattern"]).neq("id", req.exercise_id).execute().data
+    except Exception as e:
+        raise HTTPException(500, str(e))
+    # filter excluded (already in day)
+    alts = [e for e in alts if e["id"] not in (req.exclude_ids or [])]
+    if not alts:
+        # fallback same muscle
+        try:
+            alts = sb.table("exercises").select("*").eq("target_muscle", cur_ex["target_muscle"]).neq("id", req.exercise_id).execute().data
+            alts = [e for e in alts if e["id"] not in (req.exclude_ids or [])]
+        except: pass
+    if not alts:
+        raise HTTPException(404, "No alternative found")
+    def score(e):
+        s=0
+        if e["target_muscle"]==cur_ex["target_muscle"]: s-=10
+        if e["mechanics"]==cur_ex["mechanics"]: s-=5
+        if e["equipment"]!=cur_ex["equipment"]: s-=3  # different equipment good when machine occupied
+        s+= e.get("cns_load",3)
+        s+= len(e.get("joint_stress") or [])
+        return s
+    alts.sort(key=score)
+    return alts[0]
+
 @router.get("/exercises")
 async def list_exercises():
     sb=get_supabase()

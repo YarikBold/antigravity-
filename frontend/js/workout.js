@@ -37,7 +37,7 @@ function renderExerciseCards(){
         <select onchange="upd('${ex.exercise_id}',${i},'set_type',this.value)" class="input-dark py-1 text-center text-xs w-20"><option value="normal" ${s.set_type==='normal'?'selected':''}>norm</option><option value="drop_set" ${s.set_type==='drop_set'?'selected':''}>drop</option><option value="rest_pause" ${s.set_type==='rest_pause'?'selected':''}>rest</option><option value="pyramid" ${s.set_type==='pyramid'?'selected':''}>pyr</option></select>
         <button onclick="done('${ex.exercise_id}',${i})" class="w-8 h-8 rounded bg-purple/20 text-purple flex items-center justify-center"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></button>
       </div>`).join('');
-    cont.innerHTML+=`<div class="glass p-4 border-l-4 border-purple"><div class="text-white font-bold mb-2">${e.name} <span class="text-xs text-gray-500 font-normal">(${ex.target_sets||ex.sets}×${ex.target_reps||ex.reps_target})</span> <span class="text-[10px] px-1.5 py-0.5 rounded bg-purple/20 text-purple">${e.movement_pattern|| e.mechanics||''}</span></div>${lastHint}${setsHTML}</div>`;
+    cont.innerHTML+=`<div class="glass p-4 border-l-4 border-purple"><div class="text-white font-bold mb-2 flex flex-wrap items-center gap-1">${e.name} <span class="text-xs text-gray-500 font-normal">(${ex.target_sets||ex.sets}×${ex.target_reps||ex.reps_target})</span> <span class="text-[10px] px-1.5 py-0.5 rounded bg-purple/20 text-purple">${e.movement_pattern|| e.mechanics||''}</span><button onclick="swapExercise('${ex.exercise_id}')" class="ml-auto text-[10px] px-2 py-1 rounded bg-white/10 text-purple border border-purple/20 hover:bg-purple/20">Тренажер занят → Заменить</button></div>${lastHint}${setsHTML}</div>`;
   });
   const hint=document.getElementById('progression-hint'); if(hint){ const dismissed=localStorage.getItem('prog_hint_dismissed')==='1'; hint.classList.toggle('hidden', dismissed); }
 }
@@ -62,6 +62,21 @@ window.done=(eid,idx)=>{
   renderExerciseCards();
   startRestTimer(90);
 };
+
+async function swapExercise(exerciseId){
+  const ex=S.dayExercises.find(x=>String(x.exercise_id)===String(exerciseId));
+  if(!ex) return alert('Упражнение не найдено');
+  const btn=event?.target; const old=btn?btn.textContent:'';
+  if(btn) btn.textContent='Подбираю...';
+  try{
+    const exclude=S.dayExercises.map(x=>x.exercise_id);
+    const alt=await api('/api/workouts/swap-exercise',{method:'POST', body:JSON.stringify({exercise_id: exerciseId, exclude_ids: exclude})});
+    const oldSets=S.workoutSets[exerciseId];
+    ex.exercise_id=alt.id; ex.exercises=alt;
+    if(oldSets){ S.workoutSets[alt.id]=oldSets; delete S.workoutSets[exerciseId]; }
+    renderExerciseCards();
+  }catch(e){ alert('Замена: '+e.message); } finally{ if(btn) btn.textContent=old||'Тренажер занят → Заменить'; }
+}
 
 function startWorkout(){
   S.workoutSets={};
