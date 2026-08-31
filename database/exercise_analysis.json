@@ -1,0 +1,1442 @@
+{
+  "plans": [
+    {
+      "id": "33333333-3333-3333-3333-333333333333",
+      "name": "Full Body — Reboot",
+      "days": [
+        {
+          "day_number": 1,
+          "exercises": [
+            {
+              "name": "Присед со штангой",
+              "attributes": {
+                "muscle": "quads",
+                "pattern": "squat",
+                "equip": "barbell",
+                "mech": "compound",
+                "cns": 5,
+                "stress": [
+                  "knee",
+                  "lumbar"
+                ]
+              },
+              "best_method": "pyramid",
+              "method_reason": "compound CNS5, колено/поясница — пирамида 40%×8→60%×5→80%×2 безопаснее отказа",
+              "alternatives": [
+                {
+                  "name": "Жим ногами",
+                  "target_muscle": "quads",
+                  "movement_pattern": "squat",
+                  "equipment": "machine",
+                  "cns_load": 3,
+                  "reason": "squat/machine — снимает lumbar, тот же квадр"
+                },
+                {
+                  "name": "Болгарские сплит-приседы",
+                  "target_muscle": "glutes",
+                  "movement_pattern": "lunge",
+                  "equipment": "dumbbell",
+                  "cns_load": 3,
+                  "reason": "lunge/dumbbell — унилатерально, меньше веса"
+                },
+                {
+                  "name": "Гиперэкстензия",
+                  "target_muscle": "hamstrings",
+                  "movement_pattern": "hinge",
+                  "equipment": "bodyweight",
+                  "cns_load": 2,
+                  "reason": "hinge/bodyweight — разгружает колено"
+                }
+              ]
+            },
+            {
+              "name": "Жим штанги лёжа",
+              "attributes": {
+                "muscle": "chest",
+                "pattern": "horizontal_push",
+                "equip": "barbell",
+                "mech": "compound",
+                "cns": 4,
+                "stress": [
+                  "shoulder",
+                  "elbow"
+                ]
+              },
+              "best_method": "rest_pause",
+              "method_reason": "compound CNS4, плечо/локоть — rest-pause 15с добить 2-3 повтора",
+              "alternatives": [
+                {
+                  "name": "Жим гантелей на наклонной",
+                  "target_muscle": "chest",
+                  "movement_pattern": "horizontal_push",
+                  "equipment": "dumbbell",
+                  "cns_load": 3,
+                  "reason": "horizontal_push/dumbbell — больше амплитуда, меньше плечо"
+                },
+                {
+                  "name": "Отжимания",
+                  "target_muscle": "chest",
+                  "movement_pattern": "horizontal_push",
+                  "equipment": "bodyweight",
+                  "cns_load": 2,
+                  "reason": "horizontal_push/bodyweight — без оборудования"
+                },
+                {
+                  "name": "Сведение рук в кроссовере",
+                  "target_muscle": "chest",
+                  "movement_pattern": "isolation",
+                  "equipment": "cable",
+                  "cns_load": 1,
+                  "reason": "isolation/cable — добивка без штанги"
+                }
+              ]
+            },
+            {
+              "name": "Австралийские подтягивания",
+              "attributes": {
+                "muscle": "back",
+                "pattern": "horizontal_pull",
+                "equip": "bodyweight",
+                "mech": "compound",
+                "cns": 2,
+                "stress": [
+                  "shoulder"
+                ]
+              },
+              "best_method": "amrap",
+              "method_reason": "horizontal_pull CNS2 — amrap",
+              "alternatives": [
+                {
+                  "name": "Тяга штанги в наклоне",
+                  "target_muscle": "back",
+                  "movement_pattern": "horizontal_pull",
+                  "equipment": "barbell",
+                  "cns_load": 4,
+                  "reason": "horizontal_pull/barbell — тяжелее"
+                },
+                {
+                  "name": "Подтягивания с эспандером",
+                  "target_muscle": "back",
+                  "movement_pattern": "vertical_pull",
+                  "equipment": "band",
+                  "cns_load": 2,
+                  "reason": "vertical_pull/band — вертикаль"
+                },
+                {
+                  "name": "Тяга верхнего блока",
+                  "target_muscle": "back",
+                  "movement_pattern": "vertical_pull",
+                  "equipment": "cable",
+                  "cns_load": 3,
+                  "reason": "vertical_pull/cable — вертикаль"
+                }
+              ]
+            },
+            {
+              "name": "Махи гантелей в стороны",
+              "attributes": {
+                "muscle": "shoulders",
+                "pattern": "isolation",
+                "equip": "dumbbell",
+                "mech": "isolation",
+                "cns": 1,
+                "stress": [
+                  "shoulder"
+                ]
+              },
+              "best_method": "drop_set",
+              "method_reason": "isolation CNS1 — дроп",
+              "alternatives": [
+                {
+                  "name": "Жим штанги стоя",
+                  "target_muscle": "shoulders",
+                  "movement_pattern": "vertical_push",
+                  "equipment": "barbell",
+                  "cns_load": 4,
+                  "reason": "vertical_push/barbell — база плеч"
+                },
+                {
+                  "name": "Тяга верхнего блока",
+                  "target_muscle": "back",
+                  "movement_pattern": "vertical_pull",
+                  "equipment": "cable",
+                  "cns_load": 3,
+                  "reason": "vertical_pull/cable — косвенно"
+                },
+                {
+                  "name": "Планка",
+                  "target_muscle": "core",
+                  "movement_pattern": "core",
+                  "equipment": "bodyweight",
+                  "cns_load": 1,
+                  "reason": "core/bodyweight — отдых кора"
+                }
+              ]
+            },
+            {
+              "name": "Сгибание рук с гантелями",
+              "attributes": {
+                "muscle": "biceps",
+                "pattern": "isolation",
+                "equip": "dumbbell",
+                "mech": "isolation",
+                "cns": 1,
+                "stress": [
+                  "elbow"
+                ]
+              },
+              "best_method": "drop_set",
+              "method_reason": "isolation CNS1 — бицепс дроп",
+              "alternatives": [
+                {
+                  "name": "Тяга верхнего блока",
+                  "target_muscle": "back",
+                  "movement_pattern": "vertical_pull",
+                  "equipment": "cable",
+                  "cns_load": 3,
+                  "reason": "vertical_pull/cable — бицепс синергист"
+                },
+                {
+                  "name": "Австралийские подтягивания",
+                  "target_muscle": "back",
+                  "movement_pattern": "horizontal_pull",
+                  "equipment": "bodyweight",
+                  "cns_load": 2,
+                  "reason": "horizontal_pull/bodyweight — спина+бицепс"
+                },
+                {
+                  "name": "Тяга штанги в наклоне",
+                  "target_muscle": "back",
+                  "movement_pattern": "horizontal_pull",
+                  "equipment": "barbell",
+                  "cns_load": 4,
+                  "reason": "horizontal_pull/barbell — тяж"
+                }
+              ]
+            },
+            {
+              "name": "Планка",
+              "attributes": {
+                "muscle": "core",
+                "pattern": "core",
+                "equip": "bodyweight",
+                "mech": "isolation",
+                "cns": 1,
+                "stress": []
+              },
+              "best_method": "amrap",
+              "method_reason": "core — amrap время",
+              "alternatives": [
+                {
+                  "name": "Скручивания на пресс",
+                  "target_muscle": "core",
+                  "movement_pattern": "core",
+                  "equipment": "bodyweight",
+                  "cns_load": 1,
+                  "reason": "core/bodyweight — динамика"
+                },
+                {
+                  "name": "Гиперэкстензия",
+                  "target_muscle": "hamstrings",
+                  "movement_pattern": "hinge",
+                  "equipment": "bodyweight",
+                  "cns_load": 2,
+                  "reason": "hinge/bodyweight — разгибатели"
+                },
+                {
+                  "name": "Махи гантелей в стороны",
+                  "target_muscle": "shoulders",
+                  "movement_pattern": "isolation",
+                  "equipment": "dumbbell",
+                  "cns_load": 1,
+                  "reason": "isolation — отдых кора"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "day_number": 2,
+          "exercises": [
+            {
+              "name": "Жим ногами",
+              "attributes": {
+                "muscle": "quads",
+                "pattern": "squat",
+                "equip": "machine",
+                "mech": "compound",
+                "cns": 3,
+                "stress": [
+                  "knee"
+                ]
+              },
+              "best_method": "drop_set",
+              "method_reason": "machine CNS3 — идеален для дропа",
+              "alternatives": [
+                {
+                  "name": "Присед со штангой",
+                  "target_muscle": "quads",
+                  "movement_pattern": "squat",
+                  "equipment": "barbell",
+                  "cns_load": 5,
+                  "reason": "squat/barbell — свободный вес"
+                },
+                {
+                  "name": "Болгарские сплит-приседы",
+                  "target_muscle": "glutes",
+                  "movement_pattern": "lunge",
+                  "equipment": "dumbbell",
+                  "cns_load": 3,
+                  "reason": "lunge/dumbbell — унилатерально"
+                },
+                {
+                  "name": "Сгибание ног лёжа",
+                  "target_muscle": "hamstrings",
+                  "movement_pattern": "isolation",
+                  "equipment": "machine",
+                  "cns_load": 1,
+                  "reason": "isolation/machine — изолир"
+                }
+              ]
+            },
+            {
+              "name": "Жим штанги стоя",
+              "attributes": {
+                "muscle": "shoulders",
+                "pattern": "vertical_push",
+                "equip": "barbell",
+                "mech": "compound",
+                "cns": 4,
+                "stress": [
+                  "shoulder",
+                  "lumbar"
+                ]
+              },
+              "best_method": "pyramid",
+              "method_reason": "vertical_push CNS4 — пирамида",
+              "alternatives": [
+                {
+                  "name": "Махи гантелей в стороны",
+                  "target_muscle": "shoulders",
+                  "movement_pattern": "isolation",
+                  "equipment": "dumbbell",
+                  "cns_load": 1,
+                  "reason": "isolation/dumbbell — изолирует плечи без осевой"
+                },
+                {
+                  "name": "Отжимания",
+                  "target_muscle": "chest",
+                  "movement_pattern": "horizontal_push",
+                  "equipment": "bodyweight",
+                  "cns_load": 2,
+                  "reason": "horizontal_push/bodyweight — косвенно плечи"
+                },
+                {
+                  "name": "Жим гантелей на наклонной",
+                  "target_muscle": "chest",
+                  "movement_pattern": "horizontal_push",
+                  "equipment": "dumbbell",
+                  "cns_load": 3,
+                  "reason": "horizontal_push/dumbbell — верх груди+плечи"
+                }
+              ]
+            },
+            {
+              "name": "Негативные подтягивания",
+              "attributes": {
+                "muscle": "back",
+                "pattern": "vertical_pull",
+                "equip": "bodyweight",
+                "mech": "compound",
+                "cns": 3,
+                "stress": [
+                  "elbow",
+                  "shoulder"
+                ]
+              },
+              "best_method": "rest_pause",
+              "method_reason": "vertical_pull CNS3 — рест",
+              "alternatives": [
+                {
+                  "name": "Подтягивания с эспандером",
+                  "target_muscle": "back",
+                  "movement_pattern": "vertical_pull",
+                  "equipment": "band",
+                  "cns_load": 2,
+                  "reason": "vertical_pull/band — помощь"
+                },
+                {
+                  "name": "Тяга верхнего блока",
+                  "target_muscle": "back",
+                  "movement_pattern": "vertical_pull",
+                  "equipment": "cable",
+                  "cns_load": 3,
+                  "reason": "vertical_pull/cable — контролируемо"
+                },
+                {
+                  "name": "Австралийские подтягивания",
+                  "target_muscle": "back",
+                  "movement_pattern": "horizontal_pull",
+                  "equipment": "bodyweight",
+                  "cns_load": 2,
+                  "reason": "horizontal_pull/bodyweight — легче"
+                }
+              ]
+            },
+            {
+              "name": "Сведение рук в кроссовере",
+              "attributes": {
+                "muscle": "chest",
+                "pattern": "isolation",
+                "equip": "cable",
+                "mech": "isolation",
+                "cns": 1,
+                "stress": [
+                  "shoulder"
+                ]
+              },
+              "best_method": "drop_set",
+              "method_reason": "isolation CNS1 cable — классика дропа",
+              "alternatives": [
+                {
+                  "name": "Отжимания",
+                  "target_muscle": "chest",
+                  "movement_pattern": "horizontal_push",
+                  "equipment": "bodyweight",
+                  "cns_load": 2,
+                  "reason": "horizontal_push/bodyweight — база грудь"
+                },
+                {
+                  "name": "Жим гантелей на наклонной",
+                  "target_muscle": "chest",
+                  "movement_pattern": "horizontal_push",
+                  "equipment": "dumbbell",
+                  "cns_load": 3,
+                  "reason": "horizontal_push/dumbbell — база"
+                },
+                {
+                  "name": "Жим штанги лёжа",
+                  "target_muscle": "chest",
+                  "movement_pattern": "horizontal_push",
+                  "equipment": "barbell",
+                  "cns_load": 4,
+                  "reason": "horizontal_push/barbell — тяж"
+                }
+              ]
+            },
+            {
+              "name": "Разгибание на трицепс",
+              "attributes": {
+                "muscle": "triceps",
+                "pattern": "isolation",
+                "equip": "cable",
+                "mech": "isolation",
+                "cns": 1,
+                "stress": [
+                  "elbow"
+                ]
+              },
+              "best_method": "drop_set",
+              "method_reason": "isolation CNS1 — трицепс дроп",
+              "alternatives": [
+                {
+                  "name": "Жим штанги лёжа",
+                  "target_muscle": "chest",
+                  "movement_pattern": "horizontal_push",
+                  "equipment": "barbell",
+                  "cns_load": 4,
+                  "reason": "horizontal_push/barbell — трицепс синергист"
+                },
+                {
+                  "name": "Отжимания",
+                  "target_muscle": "chest",
+                  "movement_pattern": "horizontal_push",
+                  "equipment": "bodyweight",
+                  "cns_load": 2,
+                  "reason": "horizontal_push/bodyweight — трицепс"
+                },
+                {
+                  "name": "Жим гантелей на наклонной",
+                  "target_muscle": "chest",
+                  "movement_pattern": "horizontal_push",
+                  "equipment": "dumbbell",
+                  "cns_load": 3,
+                  "reason": "horizontal_push/dumbbell — трицепс"
+                }
+              ]
+            },
+            {
+              "name": "Скручивания на пресс",
+              "attributes": {
+                "muscle": "core",
+                "pattern": "core",
+                "equip": "bodyweight",
+                "mech": "isolation",
+                "cns": 1,
+                "stress": [
+                  "lumbar"
+                ]
+              },
+              "best_method": "amrap",
+              "method_reason": "core — amrap повторы",
+              "alternatives": [
+                {
+                  "name": "Планка",
+                  "target_muscle": "core",
+                  "movement_pattern": "core",
+                  "equipment": "bodyweight",
+                  "cns_load": 1,
+                  "reason": "core/bodyweight — статика"
+                },
+                {
+                  "name": "Гиперэкстензия",
+                  "target_muscle": "hamstrings",
+                  "movement_pattern": "hinge",
+                  "equipment": "bodyweight",
+                  "cns_load": 2,
+                  "reason": "hinge/bodyweight — антагонист"
+                },
+                {
+                  "name": "Отжимания",
+                  "target_muscle": "chest",
+                  "movement_pattern": "horizontal_push",
+                  "equipment": "bodyweight",
+                  "cns_load": 2,
+                  "reason": "horizontal_push — косвенно"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "day_number": 3,
+          "exercises": [
+            {
+              "name": "Румынская тяга",
+              "attributes": {
+                "muscle": "hamstrings",
+                "pattern": "hinge",
+                "equip": "barbell",
+                "mech": "compound",
+                "cns": 4,
+                "stress": [
+                  "lumbar",
+                  "hamstring"
+                ]
+              },
+              "best_method": "pyramid",
+              "method_reason": "hinge CNS4 — пирамида, дроп опасен",
+              "alternatives": [
+                {
+                  "name": "Гиперэкстензия",
+                  "target_muscle": "hamstrings",
+                  "movement_pattern": "hinge",
+                  "equipment": "bodyweight",
+                  "cns_load": 2,
+                  "reason": "hinge/bodyweight — та же цепь, без штанги"
+                },
+                {
+                  "name": "Ягодичный мостик",
+                  "target_muscle": "glutes",
+                  "movement_pattern": "hinge",
+                  "equipment": "barbell",
+                  "cns_load": 2,
+                  "reason": "hinge/barbell — акцент ягодицы"
+                },
+                {
+                  "name": "Сгибание ног лёжа",
+                  "target_muscle": "hamstrings",
+                  "movement_pattern": "isolation",
+                  "equipment": "machine",
+                  "cns_load": 1,
+                  "reason": "isolation/machine — изолирует бедро"
+                }
+              ]
+            },
+            {
+              "name": "Жим гантелей на наклонной",
+              "attributes": {
+                "muscle": "chest",
+                "pattern": "horizontal_push",
+                "equip": "dumbbell",
+                "mech": "compound",
+                "cns": 3,
+                "stress": [
+                  "shoulder"
+                ]
+              },
+              "best_method": "drop_set",
+              "method_reason": "compound CNS3 dumbbell — дроп -20%",
+              "alternatives": [
+                {
+                  "name": "Жим штанги лёжа",
+                  "target_muscle": "chest",
+                  "movement_pattern": "horizontal_push",
+                  "equipment": "barbell",
+                  "cns_load": 4,
+                  "reason": "horizontal_push/barbell — тяжелее"
+                },
+                {
+                  "name": "Отжимания",
+                  "target_muscle": "chest",
+                  "movement_pattern": "horizontal_push",
+                  "equipment": "bodyweight",
+                  "cns_load": 2,
+                  "reason": "horizontal_push/bodyweight — без гантелей"
+                },
+                {
+                  "name": "Сведение рук в кроссовере",
+                  "target_muscle": "chest",
+                  "movement_pattern": "isolation",
+                  "equipment": "cable",
+                  "cns_load": 1,
+                  "reason": "isolation/cable — памп"
+                }
+              ]
+            },
+            {
+              "name": "Тяга верхнего блока",
+              "attributes": {
+                "muscle": "back",
+                "pattern": "vertical_pull",
+                "equip": "cable",
+                "mech": "compound",
+                "cns": 3,
+                "stress": [
+                  "elbow",
+                  "shoulder"
+                ]
+              },
+              "best_method": "rest_pause",
+              "method_reason": "cable CNS3 — пауза 15с",
+              "alternatives": [
+                {
+                  "name": "Подтягивания с эспандером",
+                  "target_muscle": "back",
+                  "movement_pattern": "vertical_pull",
+                  "equipment": "band",
+                  "cns_load": 2,
+                  "reason": "vertical_pull/band — та же вертикаль"
+                },
+                {
+                  "name": "Негативные подтягивания",
+                  "target_muscle": "back",
+                  "movement_pattern": "vertical_pull",
+                  "equipment": "bodyweight",
+                  "cns_load": 3,
+                  "reason": "vertical_pull/bodyweight — эксцентрика"
+                },
+                {
+                  "name": "Австралийские подтягивания",
+                  "target_muscle": "back",
+                  "movement_pattern": "horizontal_pull",
+                  "equipment": "bodyweight",
+                  "cns_load": 2,
+                  "reason": "horizontal_pull/bodyweight — горизонталь если блок занят"
+                }
+              ]
+            },
+            {
+              "name": "Болгарские сплит-приседы",
+              "attributes": {
+                "muscle": "glutes",
+                "pattern": "lunge",
+                "equip": "dumbbell",
+                "mech": "compound",
+                "cns": 3,
+                "stress": [
+                  "knee"
+                ]
+              },
+              "best_method": "pyramid",
+              "method_reason": "lunge CNS3 — пирамида весом",
+              "alternatives": [
+                {
+                  "name": "Присед со штангой",
+                  "target_muscle": "quads",
+                  "movement_pattern": "squat",
+                  "equipment": "barbell",
+                  "cns_load": 5,
+                  "reason": "squat/barbell — двусторонний"
+                },
+                {
+                  "name": "Жим ногами",
+                  "target_muscle": "quads",
+                  "movement_pattern": "squat",
+                  "equipment": "machine",
+                  "cns_load": 3,
+                  "reason": "squat/machine — без баланса"
+                },
+                {
+                  "name": "Сгибание ног лёжа",
+                  "target_muscle": "hamstrings",
+                  "movement_pattern": "isolation",
+                  "equipment": "machine",
+                  "cns_load": 1,
+                  "reason": "isolation/machine — добивка"
+                }
+              ]
+            },
+            {
+              "name": "Сгибание ног лёжа",
+              "attributes": {
+                "muscle": "hamstrings",
+                "pattern": "isolation",
+                "equip": "machine",
+                "mech": "isolation",
+                "cns": 1,
+                "stress": [
+                  "knee"
+                ]
+              },
+              "best_method": "drop_set",
+              "method_reason": "isolation CNS1 — хамстринг дроп",
+              "alternatives": [
+                {
+                  "name": "Румынская тяга",
+                  "target_muscle": "hamstrings",
+                  "movement_pattern": "hinge",
+                  "equipment": "barbell",
+                  "cns_load": 4,
+                  "reason": "hinge/barbell — хамстринг база"
+                },
+                {
+                  "name": "Гиперэкстензия",
+                  "target_muscle": "hamstrings",
+                  "movement_pattern": "hinge",
+                  "equipment": "bodyweight",
+                  "cns_load": 2,
+                  "reason": "hinge/bodyweight — без тренажера"
+                },
+                {
+                  "name": "Болгарские сплит-приседы",
+                  "target_muscle": "glutes",
+                  "movement_pattern": "lunge",
+                  "equipment": "dumbbell",
+                  "cns_load": 3,
+                  "reason": "lunge/dumbbell — косвенно"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "44444444-4444-4444-4444-444444444444",
+      "name": "Upper/Lower — Shape",
+      "days": [
+        {
+          "day_number": 1,
+          "exercises": [
+            {
+              "name": "Ягодичный мостик",
+              "attributes": {
+                "muscle": "glutes",
+                "pattern": "hinge",
+                "equip": "barbell",
+                "mech": "compound",
+                "cns": 2,
+                "stress": []
+              },
+              "best_method": "drop_set",
+              "method_reason": "hinge CNS2 — низкий CNS дроп",
+              "alternatives": [
+                {
+                  "name": "Гиперэкстензия",
+                  "target_muscle": "hamstrings",
+                  "movement_pattern": "hinge",
+                  "equipment": "bodyweight",
+                  "cns_load": 2,
+                  "reason": "hinge/bodyweight — та же ягодица/хамстринг"
+                },
+                {
+                  "name": "Болгарские сплит-приседы",
+                  "target_muscle": "glutes",
+                  "movement_pattern": "lunge",
+                  "equipment": "dumbbell",
+                  "cns_load": 3,
+                  "reason": "lunge/dumbbell — ягодицы+квадр"
+                },
+                {
+                  "name": "Румынская тяга",
+                  "target_muscle": "hamstrings",
+                  "movement_pattern": "hinge",
+                  "equipment": "barbell",
+                  "cns_load": 4,
+                  "reason": "hinge/barbell — хамстринг акцент"
+                }
+              ]
+            },
+            {
+              "name": "Румынская тяга",
+              "attributes": {
+                "muscle": "hamstrings",
+                "pattern": "hinge",
+                "equip": "barbell",
+                "mech": "compound",
+                "cns": 4,
+                "stress": [
+                  "lumbar",
+                  "hamstring"
+                ]
+              },
+              "best_method": "pyramid",
+              "method_reason": "hinge CNS4 — пирамида, дроп опасен",
+              "alternatives": [
+                {
+                  "name": "Гиперэкстензия",
+                  "target_muscle": "hamstrings",
+                  "movement_pattern": "hinge",
+                  "equipment": "bodyweight",
+                  "cns_load": 2,
+                  "reason": "hinge/bodyweight — та же цепь, без штанги"
+                },
+                {
+                  "name": "Ягодичный мостик",
+                  "target_muscle": "glutes",
+                  "movement_pattern": "hinge",
+                  "equipment": "barbell",
+                  "cns_load": 2,
+                  "reason": "hinge/barbell — акцент ягодицы"
+                },
+                {
+                  "name": "Сгибание ног лёжа",
+                  "target_muscle": "hamstrings",
+                  "movement_pattern": "isolation",
+                  "equipment": "machine",
+                  "cns_load": 1,
+                  "reason": "isolation/machine — изолирует бедро"
+                }
+              ]
+            },
+            {
+              "name": "Болгарские сплит-приседы",
+              "attributes": {
+                "muscle": "glutes",
+                "pattern": "lunge",
+                "equip": "dumbbell",
+                "mech": "compound",
+                "cns": 3,
+                "stress": [
+                  "knee"
+                ]
+              },
+              "best_method": "pyramid",
+              "method_reason": "lunge CNS3 — пирамида весом",
+              "alternatives": [
+                {
+                  "name": "Присед со штангой",
+                  "target_muscle": "quads",
+                  "movement_pattern": "squat",
+                  "equipment": "barbell",
+                  "cns_load": 5,
+                  "reason": "squat/barbell — двусторонний"
+                },
+                {
+                  "name": "Жим ногами",
+                  "target_muscle": "quads",
+                  "movement_pattern": "squat",
+                  "equipment": "machine",
+                  "cns_load": 3,
+                  "reason": "squat/machine — без баланса"
+                },
+                {
+                  "name": "Сгибание ног лёжа",
+                  "target_muscle": "hamstrings",
+                  "movement_pattern": "isolation",
+                  "equipment": "machine",
+                  "cns_load": 1,
+                  "reason": "isolation/machine — добивка"
+                }
+              ]
+            },
+            {
+              "name": "Жим ногами",
+              "attributes": {
+                "muscle": "quads",
+                "pattern": "squat",
+                "equip": "machine",
+                "mech": "compound",
+                "cns": 3,
+                "stress": [
+                  "knee"
+                ]
+              },
+              "best_method": "drop_set",
+              "method_reason": "machine CNS3 — идеален для дропа",
+              "alternatives": [
+                {
+                  "name": "Присед со штангой",
+                  "target_muscle": "quads",
+                  "movement_pattern": "squat",
+                  "equipment": "barbell",
+                  "cns_load": 5,
+                  "reason": "squat/barbell — свободный вес"
+                },
+                {
+                  "name": "Болгарские сплит-приседы",
+                  "target_muscle": "glutes",
+                  "movement_pattern": "lunge",
+                  "equipment": "dumbbell",
+                  "cns_load": 3,
+                  "reason": "lunge/dumbbell — унилатерально"
+                },
+                {
+                  "name": "Сгибание ног лёжа",
+                  "target_muscle": "hamstrings",
+                  "movement_pattern": "isolation",
+                  "equipment": "machine",
+                  "cns_load": 1,
+                  "reason": "isolation/machine — изолир"
+                }
+              ]
+            },
+            {
+              "name": "Сгибание ног лёжа",
+              "attributes": {
+                "muscle": "hamstrings",
+                "pattern": "isolation",
+                "equip": "machine",
+                "mech": "isolation",
+                "cns": 1,
+                "stress": [
+                  "knee"
+                ]
+              },
+              "best_method": "drop_set",
+              "method_reason": "isolation CNS1 — хамстринг дроп",
+              "alternatives": [
+                {
+                  "name": "Румынская тяга",
+                  "target_muscle": "hamstrings",
+                  "movement_pattern": "hinge",
+                  "equipment": "barbell",
+                  "cns_load": 4,
+                  "reason": "hinge/barbell — хамстринг база"
+                },
+                {
+                  "name": "Гиперэкстензия",
+                  "target_muscle": "hamstrings",
+                  "movement_pattern": "hinge",
+                  "equipment": "bodyweight",
+                  "cns_load": 2,
+                  "reason": "hinge/bodyweight — без тренажера"
+                },
+                {
+                  "name": "Болгарские сплит-приседы",
+                  "target_muscle": "glutes",
+                  "movement_pattern": "lunge",
+                  "equipment": "dumbbell",
+                  "cns_load": 3,
+                  "reason": "lunge/dumbbell — косвенно"
+                }
+              ]
+            },
+            {
+              "name": "Гиперэкстензия",
+              "attributes": {
+                "muscle": "hamstrings",
+                "pattern": "hinge",
+                "equip": "bodyweight",
+                "mech": "isolation",
+                "cns": 2,
+                "stress": [
+                  "lumbar"
+                ]
+              },
+              "best_method": "rest_pause",
+              "method_reason": "hinge CNS2 — рест-пауза",
+              "alternatives": [
+                {
+                  "name": "Румынская тяга",
+                  "target_muscle": "hamstrings",
+                  "movement_pattern": "hinge",
+                  "equipment": "barbell",
+                  "cns_load": 4,
+                  "reason": "hinge/barbell — база"
+                },
+                {
+                  "name": "Ягодичный мостик",
+                  "target_muscle": "glutes",
+                  "movement_pattern": "hinge",
+                  "equipment": "barbell",
+                  "cns_load": 2,
+                  "reason": "hinge/barbell — ягодицы"
+                },
+                {
+                  "name": "Сгибание ног лёжа",
+                  "target_muscle": "hamstrings",
+                  "movement_pattern": "isolation",
+                  "equipment": "machine",
+                  "cns_load": 1,
+                  "reason": "isolation/machine — изолир"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "day_number": 2,
+          "exercises": [
+            {
+              "name": "Жим гантелей на наклонной",
+              "attributes": {
+                "muscle": "chest",
+                "pattern": "horizontal_push",
+                "equip": "dumbbell",
+                "mech": "compound",
+                "cns": 3,
+                "stress": [
+                  "shoulder"
+                ]
+              },
+              "best_method": "drop_set",
+              "method_reason": "compound CNS3 dumbbell — дроп -20%",
+              "alternatives": [
+                {
+                  "name": "Жим штанги лёжа",
+                  "target_muscle": "chest",
+                  "movement_pattern": "horizontal_push",
+                  "equipment": "barbell",
+                  "cns_load": 4,
+                  "reason": "horizontal_push/barbell — тяжелее"
+                },
+                {
+                  "name": "Отжимания",
+                  "target_muscle": "chest",
+                  "movement_pattern": "horizontal_push",
+                  "equipment": "bodyweight",
+                  "cns_load": 2,
+                  "reason": "horizontal_push/bodyweight — без гантелей"
+                },
+                {
+                  "name": "Сведение рук в кроссовере",
+                  "target_muscle": "chest",
+                  "movement_pattern": "isolation",
+                  "equipment": "cable",
+                  "cns_load": 1,
+                  "reason": "isolation/cable — памп"
+                }
+              ]
+            },
+            {
+              "name": "Тяга верхнего блока",
+              "attributes": {
+                "muscle": "back",
+                "pattern": "vertical_pull",
+                "equip": "cable",
+                "mech": "compound",
+                "cns": 3,
+                "stress": [
+                  "elbow",
+                  "shoulder"
+                ]
+              },
+              "best_method": "rest_pause",
+              "method_reason": "cable CNS3 — пауза 15с",
+              "alternatives": [
+                {
+                  "name": "Подтягивания с эспандером",
+                  "target_muscle": "back",
+                  "movement_pattern": "vertical_pull",
+                  "equipment": "band",
+                  "cns_load": 2,
+                  "reason": "vertical_pull/band — та же вертикаль"
+                },
+                {
+                  "name": "Негативные подтягивания",
+                  "target_muscle": "back",
+                  "movement_pattern": "vertical_pull",
+                  "equipment": "bodyweight",
+                  "cns_load": 3,
+                  "reason": "vertical_pull/bodyweight — эксцентрика"
+                },
+                {
+                  "name": "Австралийские подтягивания",
+                  "target_muscle": "back",
+                  "movement_pattern": "horizontal_pull",
+                  "equipment": "bodyweight",
+                  "cns_load": 2,
+                  "reason": "horizontal_pull/bodyweight — горизонталь если блок занят"
+                }
+              ]
+            },
+            {
+              "name": "Жим штанги стоя",
+              "attributes": {
+                "muscle": "shoulders",
+                "pattern": "vertical_push",
+                "equip": "barbell",
+                "mech": "compound",
+                "cns": 4,
+                "stress": [
+                  "shoulder",
+                  "lumbar"
+                ]
+              },
+              "best_method": "pyramid",
+              "method_reason": "vertical_push CNS4 — пирамида",
+              "alternatives": [
+                {
+                  "name": "Махи гантелей в стороны",
+                  "target_muscle": "shoulders",
+                  "movement_pattern": "isolation",
+                  "equipment": "dumbbell",
+                  "cns_load": 1,
+                  "reason": "isolation/dumbbell — изолирует плечи без осевой"
+                },
+                {
+                  "name": "Отжимания",
+                  "target_muscle": "chest",
+                  "movement_pattern": "horizontal_push",
+                  "equipment": "bodyweight",
+                  "cns_load": 2,
+                  "reason": "horizontal_push/bodyweight — косвенно плечи"
+                },
+                {
+                  "name": "Жим гантелей на наклонной",
+                  "target_muscle": "chest",
+                  "movement_pattern": "horizontal_push",
+                  "equipment": "dumbbell",
+                  "cns_load": 3,
+                  "reason": "horizontal_push/dumbbell — верх груди+плечи"
+                }
+              ]
+            },
+            {
+              "name": "Сведение рук в кроссовере",
+              "attributes": {
+                "muscle": "chest",
+                "pattern": "isolation",
+                "equip": "cable",
+                "mech": "isolation",
+                "cns": 1,
+                "stress": [
+                  "shoulder"
+                ]
+              },
+              "best_method": "drop_set",
+              "method_reason": "isolation CNS1 cable — классика дропа",
+              "alternatives": [
+                {
+                  "name": "Отжимания",
+                  "target_muscle": "chest",
+                  "movement_pattern": "horizontal_push",
+                  "equipment": "bodyweight",
+                  "cns_load": 2,
+                  "reason": "horizontal_push/bodyweight — база грудь"
+                },
+                {
+                  "name": "Жим гантелей на наклонной",
+                  "target_muscle": "chest",
+                  "movement_pattern": "horizontal_push",
+                  "equipment": "dumbbell",
+                  "cns_load": 3,
+                  "reason": "horizontal_push/dumbbell — база"
+                },
+                {
+                  "name": "Жим штанги лёжа",
+                  "target_muscle": "chest",
+                  "movement_pattern": "horizontal_push",
+                  "equipment": "barbell",
+                  "cns_load": 4,
+                  "reason": "horizontal_push/barbell — тяж"
+                }
+              ]
+            },
+            {
+              "name": "Махи гантелей в стороны",
+              "attributes": {
+                "muscle": "shoulders",
+                "pattern": "isolation",
+                "equip": "dumbbell",
+                "mech": "isolation",
+                "cns": 1,
+                "stress": [
+                  "shoulder"
+                ]
+              },
+              "best_method": "drop_set",
+              "method_reason": "isolation CNS1 — дроп",
+              "alternatives": [
+                {
+                  "name": "Жим штанги стоя",
+                  "target_muscle": "shoulders",
+                  "movement_pattern": "vertical_push",
+                  "equipment": "barbell",
+                  "cns_load": 4,
+                  "reason": "vertical_push/barbell — база плеч"
+                },
+                {
+                  "name": "Тяга верхнего блока",
+                  "target_muscle": "back",
+                  "movement_pattern": "vertical_pull",
+                  "equipment": "cable",
+                  "cns_load": 3,
+                  "reason": "vertical_pull/cable — косвенно"
+                },
+                {
+                  "name": "Планка",
+                  "target_muscle": "core",
+                  "movement_pattern": "core",
+                  "equipment": "bodyweight",
+                  "cns_load": 1,
+                  "reason": "core/bodyweight — отдых кора"
+                }
+              ]
+            },
+            {
+              "name": "Планка",
+              "attributes": {
+                "muscle": "core",
+                "pattern": "core",
+                "equip": "bodyweight",
+                "mech": "isolation",
+                "cns": 1,
+                "stress": []
+              },
+              "best_method": "amrap",
+              "method_reason": "core — amrap время",
+              "alternatives": [
+                {
+                  "name": "Скручивания на пресс",
+                  "target_muscle": "core",
+                  "movement_pattern": "core",
+                  "equipment": "bodyweight",
+                  "cns_load": 1,
+                  "reason": "core/bodyweight — динамика"
+                },
+                {
+                  "name": "Гиперэкстензия",
+                  "target_muscle": "hamstrings",
+                  "movement_pattern": "hinge",
+                  "equipment": "bodyweight",
+                  "cns_load": 2,
+                  "reason": "hinge/bodyweight — разгибатели"
+                },
+                {
+                  "name": "Махи гантелей в стороны",
+                  "target_muscle": "shoulders",
+                  "movement_pattern": "isolation",
+                  "equipment": "dumbbell",
+                  "cns_load": 1,
+                  "reason": "isolation — отдых кора"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "day_number": 3,
+          "exercises": [
+            {
+              "name": "Ягодичный мостик",
+              "attributes": {
+                "muscle": "glutes",
+                "pattern": "hinge",
+                "equip": "barbell",
+                "mech": "compound",
+                "cns": 2,
+                "stress": []
+              },
+              "best_method": "drop_set",
+              "method_reason": "hinge CNS2 — низкий CNS дроп",
+              "alternatives": [
+                {
+                  "name": "Гиперэкстензия",
+                  "target_muscle": "hamstrings",
+                  "movement_pattern": "hinge",
+                  "equipment": "bodyweight",
+                  "cns_load": 2,
+                  "reason": "hinge/bodyweight — та же ягодица/хамстринг"
+                },
+                {
+                  "name": "Болгарские сплит-приседы",
+                  "target_muscle": "glutes",
+                  "movement_pattern": "lunge",
+                  "equipment": "dumbbell",
+                  "cns_load": 3,
+                  "reason": "lunge/dumbbell — ягодицы+квадр"
+                },
+                {
+                  "name": "Румынская тяга",
+                  "target_muscle": "hamstrings",
+                  "movement_pattern": "hinge",
+                  "equipment": "barbell",
+                  "cns_load": 4,
+                  "reason": "hinge/barbell — хамстринг акцент"
+                }
+              ]
+            },
+            {
+              "name": "Присед со штангой",
+              "attributes": {
+                "muscle": "quads",
+                "pattern": "squat",
+                "equip": "barbell",
+                "mech": "compound",
+                "cns": 5,
+                "stress": [
+                  "knee",
+                  "lumbar"
+                ]
+              },
+              "best_method": "pyramid",
+              "method_reason": "compound CNS5, колено/поясница — пирамида 40%×8→60%×5→80%×2 безопаснее отказа",
+              "alternatives": [
+                {
+                  "name": "Жим ногами",
+                  "target_muscle": "quads",
+                  "movement_pattern": "squat",
+                  "equipment": "machine",
+                  "cns_load": 3,
+                  "reason": "squat/machine — снимает lumbar, тот же квадр"
+                },
+                {
+                  "name": "Болгарские сплит-приседы",
+                  "target_muscle": "glutes",
+                  "movement_pattern": "lunge",
+                  "equipment": "dumbbell",
+                  "cns_load": 3,
+                  "reason": "lunge/dumbbell — унилатерально, меньше веса"
+                },
+                {
+                  "name": "Гиперэкстензия",
+                  "target_muscle": "hamstrings",
+                  "movement_pattern": "hinge",
+                  "equipment": "bodyweight",
+                  "cns_load": 2,
+                  "reason": "hinge/bodyweight — разгружает колено"
+                }
+              ]
+            },
+            {
+              "name": "Болгарские сплит-приседы",
+              "attributes": {
+                "muscle": "glutes",
+                "pattern": "lunge",
+                "equip": "dumbbell",
+                "mech": "compound",
+                "cns": 3,
+                "stress": [
+                  "knee"
+                ]
+              },
+              "best_method": "pyramid",
+              "method_reason": "lunge CNS3 — пирамида весом",
+              "alternatives": [
+                {
+                  "name": "Присед со штангой",
+                  "target_muscle": "quads",
+                  "movement_pattern": "squat",
+                  "equipment": "barbell",
+                  "cns_load": 5,
+                  "reason": "squat/barbell — двусторонний"
+                },
+                {
+                  "name": "Жим ногами",
+                  "target_muscle": "quads",
+                  "movement_pattern": "squat",
+                  "equipment": "machine",
+                  "cns_load": 3,
+                  "reason": "squat/machine — без баланса"
+                },
+                {
+                  "name": "Сгибание ног лёжа",
+                  "target_muscle": "hamstrings",
+                  "movement_pattern": "isolation",
+                  "equipment": "machine",
+                  "cns_load": 1,
+                  "reason": "isolation/machine — добивка"
+                }
+              ]
+            },
+            {
+              "name": "Жим ногами",
+              "attributes": {
+                "muscle": "quads",
+                "pattern": "squat",
+                "equip": "machine",
+                "mech": "compound",
+                "cns": 3,
+                "stress": [
+                  "knee"
+                ]
+              },
+              "best_method": "drop_set",
+              "method_reason": "machine CNS3 — идеален для дропа",
+              "alternatives": [
+                {
+                  "name": "Присед со штангой",
+                  "target_muscle": "quads",
+                  "movement_pattern": "squat",
+                  "equipment": "barbell",
+                  "cns_load": 5,
+                  "reason": "squat/barbell — свободный вес"
+                },
+                {
+                  "name": "Болгарские сплит-приседы",
+                  "target_muscle": "glutes",
+                  "movement_pattern": "lunge",
+                  "equipment": "dumbbell",
+                  "cns_load": 3,
+                  "reason": "lunge/dumbbell — унилатерально"
+                },
+                {
+                  "name": "Сгибание ног лёжа",
+                  "target_muscle": "hamstrings",
+                  "movement_pattern": "isolation",
+                  "equipment": "machine",
+                  "cns_load": 1,
+                  "reason": "isolation/machine — изолир"
+                }
+              ]
+            },
+            {
+              "name": "Сгибание ног лёжа",
+              "attributes": {
+                "muscle": "hamstrings",
+                "pattern": "isolation",
+                "equip": "machine",
+                "mech": "isolation",
+                "cns": 1,
+                "stress": [
+                  "knee"
+                ]
+              },
+              "best_method": "drop_set",
+              "method_reason": "isolation CNS1 — хамстринг дроп",
+              "alternatives": [
+                {
+                  "name": "Румынская тяга",
+                  "target_muscle": "hamstrings",
+                  "movement_pattern": "hinge",
+                  "equipment": "barbell",
+                  "cns_load": 4,
+                  "reason": "hinge/barbell — хамстринг база"
+                },
+                {
+                  "name": "Гиперэкстензия",
+                  "target_muscle": "hamstrings",
+                  "movement_pattern": "hinge",
+                  "equipment": "bodyweight",
+                  "cns_load": 2,
+                  "reason": "hinge/bodyweight — без тренажера"
+                },
+                {
+                  "name": "Болгарские сплит-приседы",
+                  "target_muscle": "glutes",
+                  "movement_pattern": "lunge",
+                  "equipment": "dumbbell",
+                  "cns_load": 3,
+                  "reason": "lunge/dumbbell — косвенно"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
