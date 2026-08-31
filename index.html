@@ -323,6 +323,19 @@
     <button onclick="startRestTimer(120)" class="glass flex-1 py-2 text-xs">120с</button>
     <button onclick="startRestTimer(180)" class="glass flex-1 py-2 text-xs">180с</button>
   </div>
+
+  <!-- Tempo metronome [18] -->
+  <div class="glass p-3 mb-4 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <div id="metronome-circle" class="w-8 h-8 rounded-full bg-purple/20 border-2 border-purple/30 flex items-center justify-center text-xs">♩</div>
+      <div><div class="text-xs text-gray-400">Темпо-метроном</div><div class="text-[10px] text-purple" id="metronome-phase">3-0-1-0</div></div>
+    </div>
+    <div class="flex gap-2">
+      <select id="metronome-tempo" class="input-dark py-1 text-xs w-24"><option value="3-0-1-0">3-0-1-0</option><option value="2-0-1-0">2-0-1-0</option><option value="3-1-1-0">3-1-1-0</option></select>
+      <button onclick="startMetronome(document.getElementById('metronome-tempo').value)" class="btn-ghost text-xs py-1 px-2">Старт</button>
+      <button onclick="stopMetronome()" class="btn-ghost text-xs py-1 px-2">Стоп</button>
+    </div>
+  </div>
   
   <div class="space-y-4" id="exercise-cards"></div>
   <div class="glass p-4 mt-4">
@@ -394,6 +407,7 @@
   <h2 class="text-2xl font-black grad-text mb-2">Отличная работа!</h2>
   <p class="text-gray-400 text-sm mb-6" id="complete-stats"></p>
   <div id="progression-results" class="space-y-3 mb-8 text-left"></div>
+  <button onclick="shareWorkout()" id="btn-share" class="btn-ghost w-full mb-3 flex items-center justify-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.5 12.5 12 16l3.5-3.5M12 16V4M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg> Скопировать отчет для Telegram</button>
   <button onclick="loadDashboard()" class="btn-primary">На главную</button>
 </section>
 
@@ -829,6 +843,15 @@ function startFinisher(mode){ const preset=FINISHER_PRESETS[mode]; if(!preset) r
 function runFinisherTick(){ if(finisherInterval) clearInterval(finisherInterval); const display=document.getElementById('finisher-display'); const roundEl=document.getElementById('finisher-round'); const bar=document.getElementById('finisher-bar'); const ring=document.getElementById('finisher-ring'); const preset=FINISHER_PRESETS[finisherState.mode]; finisherInterval=setInterval(()=>{ finisherState.remaining--; if(display) display.textContent=formatTimer(finisherState.remaining); if(roundEl) roundEl.textContent=`Раунд ${finisherState.round}/${preset.rounds||preset.seq?.length||1} — ${finisherState.isWork?'Работа':'Отдых'}`; if(finisherState.remaining<=0){ try{ const ctx=new (window.AudioContext||window.webkitAudioContext)(); const o=ctx.createOscillator(); o.frequency.value=finisherState.isWork?660:440; o.connect(ctx.destination); o.start(); setTimeout(()=>o.stop(),200);}catch{} try{ navigator.vibrate&&navigator.vibrate(120);}catch{} if(finisherState.mode==='tabata' || finisherState.mode==='30-30' || finisherState.mode==='emom'){ if(!finisherState.isWork){ finisherState.round++; if(finisherState.round>preset.rounds){ clearInterval(finisherInterval); finisherState.mode=null; if(display) display.textContent='Готово!'; setTimeout(()=>showSection('workout-complete'),1500); return; } } finisherState.isWork=!finisherState.isWork; finisherState.remaining=finisherState.isWork?preset.work:preset.rest; } else if(finisherState.mode==='pyramid'){ let nextIsWork=!finisherState.isWork; let nextRemaining; if(nextIsWork){ finisherState.seqIdx++; if(finisherState.seqIdx>=preset.seq.length){ clearInterval(finisherInterval); if(display) display.textContent='Готово!'; setTimeout(()=>showSection('workout-complete'),1500); return; } nextRemaining=preset.seq[finisherState.seqIdx]; } else nextRemaining=preset.rest; finisherState.isWork=nextIsWork; finisherState.remaining=nextRemaining; } else if(finisherState.mode==='amrap'){ clearInterval(finisherInterval); if(display) display.textContent='Время!'; setTimeout(()=>showSection('workout-complete'),1500); return; } if(ring) ring.classList.toggle('active', finisherState.isWork); } },1000); }
 function stopFinisher(){ if(finisherInterval){ clearInterval(finisherInterval); finisherInterval=null; } showSection('active-workout'); }
 function toggleCheatSheet(){ const s=document.getElementById('cheat-sheet'); const i=document.getElementById('cheat-icon'); if(!s) return; s.classList.toggle('hidden'); if(i) i.textContent=s.classList.contains('hidden')?'▼':'▲'; }
+// Gym tools [18] — Plate Visualizer + Tempo + Share
+const BAR_WEIGHT=20; const PLATE_COLORS={25:'#DC2626',20:'#2563EB',15:'#EAB308',10:'#16A34A',5:'#FFFFFF',2.5:'#1F2937',1.25:'#EC4899'}; const PLATE_ORDER=[25,20,15,10,5,2.5,1.25];
+function plateBreakdown(total){ if(total<=BAR_WEIGHT) return []; let perSide=(total-BAR_WEIGHT)/2, out=[]; for(let p of PLATE_ORDER){ while(perSide>=p-0.001){ out.push(p); perSide=Math.round((perSide-p)*100)/100; } } return out; }
+function renderPlates(totalWeight, containerId){ const cont=document.getElementById(containerId); if(!cont) return; const plates=plateBreakdown(totalWeight); if(!plates.length){ cont.innerHTML=`<span class="text-[10px] text-gray-500">Гриф 20кг</span>`; return; } cont.innerHTML=plates.map(p=> `<span class="inline-flex items-center justify-center w-6 h-8 rounded text-[9px] font-bold border" style="background:${PLATE_COLORS[p]};color:${p===5?'#000':'#fff'};border-color:#000">${p}</span>`).join('<span class="mx-0.5 text-gray-600">|</span>')+`<span class="ml-1 text-[10px] text-gray-400">×2</span>`; }
+let metroCtx=null, metroInterval=null;
+function startMetronome(tempo="3-0-1-0"){ stopMetronome(); const parts=tempo.split('-').map(Number); const phases=['Эксцентрика','Пауза','Концентрика','Пауза']; let phaseIdx=0, tick=0; const circle=document.getElementById('metronome-circle'); try{ metroCtx=new (window.AudioContext||window.webkitAudioContext)(); }catch{} metroInterval=setInterval(()=>{ tick++; if(circle){ circle.classList.add('active'); setTimeout(()=>circle.classList.remove('active'),180); const l=document.getElementById('metronome-phase'); if(l) l.textContent=phases[phaseIdx]+` ${tick}/${parts[phaseIdx]||1}`; } if(tick>= (parts[phaseIdx]||1)){ tick=0; phaseIdx=(phaseIdx+1)%parts.length; try{ const o=metroCtx.createOscillator(); o.frequency.value=phaseIdx===2?880:440; o.connect(metroCtx.destination); o.start(); setTimeout(()=>o.stop(),70);}catch{} } }, 1000); }
+function stopMetronome(){ if(metroInterval){ clearInterval(metroInterval); metroInterval=null; } if(metroCtx){ try{ metroCtx.close(); }catch{} metroCtx=null; } const c=document.getElementById('metronome-circle'); if(c) c.classList.remove('active'); }
+function buildShareText(){ const tonnage=Object.values(S.workoutSets||{}).flat().filter(s=>s.done).reduce((a,s)=>a+(s.weight*s.reps),0); const prLines=(S._newPRs||[]).map(p=>`🏆 Рекорд e1RM ${p.name}: ${p.e1rm}кг`).join('\n'); return [`🏋️ Antigravity — ${new Date().toLocaleDateString('ru-RU')}`,`👤 ${S.user?.name||''} • ${S.planData?.plan?.name||''} День ${S.selectedDay||''}`,`Тоннаж: ${tonnage.toFixed(1)} кг`,prLines,`Подходов: ${Object.values(S.workoutSets||{}).flat().filter(s=>s.done).length}`,`Antigravity 💜`].filter(Boolean).join('\n'); }
+async function shareWorkout(){ const t=buildShareText(); try{ await navigator.clipboard.writeText(t); const b=document.getElementById('btn-share'); if(b){ const o=b.innerHTML; b.textContent='Скопировано!'; setTimeout(()=>b.innerHTML=o,1500);} }catch{ prompt('Скопируй отчет:', t); } }
 
 function renderWorkoutBadge() {
   const badge = document.getElementById('workout-badge');
@@ -890,7 +913,9 @@ function renderExerciseCards() {
         <button onclick="done('${ex.exercise_id}',${i})" class="w-8 h-8 rounded bg-purple/20 text-purple flex items-center justify-center"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></button>
       </div>`).join('');
       
-    cont.innerHTML += `<div class="glass p-4 border-l-4 border-purple"><div class="text-white font-bold mb-2">${e.name} <span class="text-xs text-gray-500 font-normal">(${ex.target_sets||ex.sets||3}×${repStr})</span>${methodBadge}</div>${methodHint}${lastHint}${setsHTML}</div>`;
+    cont.innerHTML += `<div class="glass p-4 border-l-4 border-purple"><div class="text-white font-bold mb-2">${e.name} <span class="text-xs text-gray-500 font-normal">(${ex.target_sets||ex.sets||3}×${repStr})</span>${methodBadge}</div>${methodHint}${lastHint}<div id="plates-${ex.exercise_id}" class="flex flex-wrap gap-1 my-1"></div>${setsHTML}</div>`;
+    // plate visualizer [18]
+    setTimeout(()=>{ try{ const w=parseFloat(S.workoutSets[ex.exercise_id]?.[0]?.weight||0); if(w>=20 && typeof renderPlates==='function') renderPlates(w, 'plates-'+ex.exercise_id); }catch{} }, 0);
   });
   // показать баннер прогрессии если не скрыт
   const hint = document.getElementById('progression-hint');

@@ -1,9 +1,7 @@
--- Antigravity — Principal Schema (Supabase / PostgreSQL)
--- UUID-based, production-ready
-
+-- Antigravity — Principal Schema (Supabase / PostgreSQL) database/schema.sql [1]
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- Drop old (idempotent)
+DROP TABLE IF EXISTS personal_records CASCADE;
 DROP TABLE IF EXISTS workout_sets CASCADE;
 DROP TABLE IF EXISTS workout_logs CASCADE;
 DROP TABLE IF EXISTS readiness_logs CASCADE;
@@ -12,7 +10,7 @@ DROP TABLE IF EXISTS exercises CASCADE;
 DROP TABLE IF EXISTS workout_plans CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 
--- 1. users
+-- 1. users — 2 хардкод-профиля, UUID PK
 CREATE TABLE users (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name            TEXT NOT NULL,
@@ -32,7 +30,7 @@ CREATE TABLE workout_plans (
   description     TEXT
 );
 
--- 3. exercises
+-- 3. exercises — биомеханика
 CREATE TABLE exercises (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name              TEXT NOT NULL UNIQUE,
@@ -68,6 +66,7 @@ CREATE TABLE readiness_logs (
   stress_level    INT NOT NULL CHECK (stress_level BETWEEN 1 AND 5),
   soreness_areas  TEXT[] NOT NULL DEFAULT '{}',
   cns_fatigue     INT NOT NULL CHECK (cns_fatigue BETWEEN 1 AND 5),
+  readiness_score NUMERIC(3,2),
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(user_id, date)
 );
@@ -94,8 +93,18 @@ CREATE TABLE workout_sets (
   rir         INT NOT NULL DEFAULT 2 CHECK (rir BETWEEN 0 AND 5)
 );
 
--- Legacy compatibility views (for old integer-based frontend)
--- keep old tables as views? not needed for MVP
+-- 8. personal_records — e1RM PR tracker
+CREATE TABLE personal_records (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  exercise_id UUID NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
+  e1rm        NUMERIC(6,2) NOT NULL,
+  weight      NUMERIC(6,2) NOT NULL,
+  reps        INT NOT NULL,
+  date        DATE NOT NULL DEFAULT CURRENT_DATE,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(user_id, exercise_id)
+);
 
 -- Indexes
 CREATE INDEX idx_plan_ex_plan_day ON plan_exercises(plan_id, day_number, order_index);
@@ -103,9 +112,9 @@ CREATE INDEX idx_logs_user_date ON workout_logs(user_id, date DESC);
 CREATE INDEX idx_sets_log_ex ON workout_sets(log_id, exercise_id);
 CREATE INDEX idx_readiness_user_date ON readiness_logs(user_id, date DESC);
 CREATE INDEX idx_ex_muscle ON exercises(target_muscle);
-CREATE INDEX idx_ex_movement ON exercises(movement_pattern);
+CREATE INDEX idx_pr_user_ex ON personal_records(user_id, exercise_id);
 
--- RLS disabled for MVP (hardcode 2 profiles)
+-- RLS disabled for MVP (2 профиля без auth)
 ALTER TABLE users DISABLE ROW LEVEL SECURITY;
 ALTER TABLE workout_plans DISABLE ROW LEVEL SECURITY;
 ALTER TABLE exercises DISABLE ROW LEVEL SECURITY;
@@ -113,3 +122,4 @@ ALTER TABLE plan_exercises DISABLE ROW LEVEL SECURITY;
 ALTER TABLE readiness_logs DISABLE ROW LEVEL SECURITY;
 ALTER TABLE workout_logs DISABLE ROW LEVEL SECURITY;
 ALTER TABLE workout_sets DISABLE ROW LEVEL SECURITY;
+ALTER TABLE personal_records DISABLE ROW LEVEL SECURITY;

@@ -16,9 +16,7 @@ def get_supabase() -> Client:
         raise HTTPException(500, f"Failed to init Supabase: {e}")
     return _supabase
 
-# Proxy for legacy imports: from .database import supabase
 class _Proxy:
     def __getattr__(self, name):
         return getattr(get_supabase(), name)
-
 supabase = _Proxy()  # type: ignore
