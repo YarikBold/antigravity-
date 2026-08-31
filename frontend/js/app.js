@@ -25,7 +25,10 @@ function showSection(id) {
   if (id === 'plan-select' && typeof loadPlans === 'function') loadPlans();
 }
 
+const LEGACY_MAP = { '1': '11111111-1111-1111-1111-111111111111', '2': '22222222-2222-2222-2222-222222222222' };
+function normalizeUid(uid){ uid = String(uid); return LEGACY_MAP[uid] || uid; }
 async function selectProfile(uid) {
+  uid = normalizeUid(uid);
   S.userId = uid; localStorage.setItem('ag_uid', uid);
   showSection('loading-screen');
   try {
@@ -267,6 +270,6 @@ function showWarmupScreen(){
   showSection('warmup-screen');
 }
 
-// Auto-init
-if(localStorage.getItem('ag_uid')) selectProfile(localStorage.getItem('ag_uid'));
+// Auto-init — migrate legacy 1/2 to UUID
+if(localStorage.getItem('ag_uid')) selectProfile(normalizeUid(localStorage.getItem('ag_uid')));
 else showSection('profile-select');

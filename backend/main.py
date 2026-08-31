@@ -10,9 +10,15 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from app.database import get_supabase
-from app.routes.workouts import router as workouts_router, legacy_router as workouts_legacy
-from app.routes.readiness import router as readiness_router, legacy_router as readiness_legacy
+# Render runs as backend.main -> app is backend.app; local runs as app.main -> app is app
+try:
+    from app.database import get_supabase
+    from app.routes.workouts import router as workouts_router, legacy_router as workouts_legacy
+    from app.routes.readiness import router as readiness_router, legacy_router as readiness_legacy
+except ModuleNotFoundError:
+    from backend.app.database import get_supabase
+    from backend.app.routes.workouts import router as workouts_router, legacy_router as workouts_legacy
+    from backend.app.routes.readiness import router as readiness_router, legacy_router as readiness_legacy
 
 app = FastAPI(title="Antigravity", version="1.0.0")
 
@@ -33,7 +39,10 @@ app.include_router(readiness_legacy)
 
 @app.get("/health")
 async def health():
-    from app.config import SUPABASE_URL, SUPABASE_KEY
+    try:
+        from app.config import SUPABASE_URL, SUPABASE_KEY
+    except ModuleNotFoundError:
+        from backend.app.config import SUPABASE_URL, SUPABASE_KEY
     return {"status": "ok" if (SUPABASE_URL and SUPABASE_KEY) else "misconfigured"}
 
 class UpdatePlanRequest(BaseModel):
@@ -42,24 +51,99 @@ class UpdatePlanRequest(BaseModel):
 class UpdateScheduleRequest(BaseModel):
     schedule: list[int]
 
+# Legacy 1/2 -> UUID mapping for new schema (seed.sql)
+LEGACY_ID_MAP = {
+    "1": "11111111-1111-1111-1111-111111111111",
+    "2": "22222222-2222-2222-2222-222222222222",
+}
+# reverse for debug
+UUID_TO_LEGACY = {v: k for k, v in LEGACY_ID_MAP.items()}
+DEFAULT_SCHEDULE = {
+    "11111111-1111-1111-1111-111111111111": [1, 3, 5],
+    "22222222-2222-2222-2222-222222222222": [1, 2, 4, 5],
+}
+
+def _enrich_user(row: dict) -> dict:
+    """Add missing legacy fields for new UUID schema so old frontend doesn't crash."""
+    if row is None:
+        return row
+    uid = str(row.get("id"))
+    # current_plan_id doesn't exist in new schema -> derive from workout_plans.target_user_id
+    if "current_plan_id" not in row or row.get("current_plan_id") is None:
+        try:
+            sb = get_supabase()
+            r = sb.table("workout_plans").select("id").eq("target_user_id", uid).limit(1).execute()
+            if r.data:
+                row["current_plan_id"] = r.data[0]["id"]
+            else:
+                # fallback hardcoded
+                row["current_plan_id"] = "33333333-3333-3333-3333-333333333333" if uid == "11111111-1111-1111-1111-111111111111" else "44444444-4444-4444-4444-444444444444"
+        except Exception:
+            row["current_plan_id"] = row.get("current_plan_id") or "33333333-3333-3333-3333-333333333333"
+    # schedule doesn't exist in new schema -> default
+    if "schedule" not in row or row.get("schedule") is None:
+        row["schedule"] = DEFAULT_SCHEDULE.get(uid, [1, 3, 5])
+    return row
+
 @app.get("/api/user/{user_id}")
 async def get_user(user_id: str):
     sb = get_supabase()
-    # try UUID, then int
-    for tbl in ["users"]:
+    # build candidates: original, legacy->UUID, UUID string
+    candidates = []
+    uid_str = str(user_id).strip()
+    candidates.append(uid_str)
+    if uid_str in LEGACY_ID_MAP:
+        candidates.append(LEGACY_ID_MAP[uid_str])
+    # if it's already UUID, also try legacy int form (should fail gracefully)
+    if uid_str in UUID_TO_LEGACY:
+        candidates.append(UUID_TO_LEGACY[uid_str])
+
+    # deduplicate preserving order
+    seen = set()
+    uniq = []
+    for c in candidates:
+        if c not in seen:
+            uniq.append(c)
+            seen.add(c)
+
+    for cand in uniq:
+        # 1) try exact string (UUID or int-as-string)
         try:
-            r = sb.table("users").select("*").eq("id", user_id).execute()
+            r = sb.table("users").select("*").eq("id", cand).execute()
             if r.data:
-                return r.data[0]
+                return _enrich_user(r.data[0])
+        except Exception as e:
+            # PostgREST type mismatch (int vs uuid) throws, ignore
+            pass
+        # 2) try int conversion if numeric
+        if cand.isdigit():
+            try:
+                r = sb.table("users").select("*").eq("id", int(cand)).execute()
+                if r.data:
+                    return _enrich_user(r.data[0])
+            except Exception:
+                pass
+
+    # last resort: if table is UUID schema and user asked for "1"/"2", try selecting by name
+    if uid_str in ("1", "2"):
+        try:
+            name = "Ярик" if uid_str == "1" else "Олеся"
+            r = sb.table("users").select("*").eq("name", name).limit(1).execute()
+            if r.data:
+                return _enrich_user(r.data[0])
         except Exception:
             pass
-        try:
-            # legacy int
-            r = sb.table("users").select("*").eq("id", int(user_id)).execute()
-            if r.data:
-                return r.data[0]
-        except Exception:
-            pass
+
+    # debug: include hint when table is empty (new schema not seeded)
+    try:
+        cnt = sb.table("users").select("id").limit(1).execute()
+        if not cnt.data:
+            raise HTTPException(404, "User not found: users table is empty — run database/schema.sql + database/seed.sql in Supabase SQL Editor")
+    except HTTPException:
+        raise
+    except Exception:
+        pass
+
     raise HTTPException(404, "User not found")
 
 @app.get("/api/logs/{user_id}")

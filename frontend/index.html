@@ -84,7 +84,7 @@
     <p class="text-gray-400 text-sm">AI-трекер силовых тренировок</p>
   </div>
   <div class="space-y-4">
-    <button onclick="selectProfile(1)" class="w-full grad-border card-hover">
+    <button onclick="selectProfile('11111111-1111-1111-1111-111111111111')" class="w-full grad-border card-hover">
       <div class="glass p-6 flex items-center gap-5" style="border-radius:14px">
         <div class="w-12 h-12 rounded-xl bg-purple/20 flex items-center justify-center">
           <svg class="w-7 h-7 text-purple" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
@@ -95,7 +95,7 @@
         </div>
       </div>
     </button>
-    <button onclick="selectProfile(2)" class="w-full grad-border card-hover">
+    <button onclick="selectProfile('22222222-2222-2222-2222-222222222222')" class="w-full grad-border card-hover">
       <div class="glass p-6 flex items-center gap-5" style="border-radius:14px">
         <div class="w-12 h-12 rounded-xl bg-pink/20 flex items-center justify-center">
           <svg class="w-7 h-7 text-pink" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
@@ -391,7 +391,10 @@ function showSection(id) {
   if (header) header.classList.toggle('hidden', id === 'profile-select');
 }
 
+const LEGACY_MAP = { '1': '11111111-1111-1111-1111-111111111111', '2': '22222222-2222-2222-2222-222222222222' };
+function normalizeUid(uid){ uid = String(uid); return LEGACY_MAP[uid] || uid; }
 async function selectProfile(uid) {
+  uid = normalizeUid(uid);
   S.userId = uid; localStorage.setItem('ag_uid', uid);
   showSection('loading-screen');
   try {
@@ -412,7 +415,7 @@ async function loadDashboard() {
   
   if (dashName) dashName.textContent = S.user.name;
   if (headerUser) headerUser.textContent = S.user.name;
-  if (pullupGuide) pullupGuide.classList.toggle('hidden', S.user.id !== 1);
+  if (pullupGuide) pullupGuide.classList.toggle('hidden', String(S.user.id) !== '11111111-1111-1111-1111-111111111111' && String(S.user.id) !== '1');
 
   S.planData = await api('/api/plan/' + S.user.current_plan_id);
   if (dashPlanName) dashPlanName.textContent = S.planData.plan.name;
@@ -1067,7 +1070,7 @@ showSection = function(id) {
   if (id === 'plan-select') loadPlans();
 };
 
-if(localStorage.getItem('ag_uid')) selectProfile(parseInt(localStorage.getItem('ag_uid')));
+if(localStorage.getItem('ag_uid')) selectProfile(normalizeUid(localStorage.getItem('ag_uid')));
 else showSection('profile-select');
 </script>
 </body>
