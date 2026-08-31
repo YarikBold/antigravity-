@@ -58,6 +58,13 @@
     .cal-day.missed { border-bottom: 3px solid #EF4444; background: rgba(239,68,68,0.1); }
     .day-name { font-size: 11px; text-transform: uppercase; color: #9CA3AF; font-weight: 600; margin-bottom: 4px; }
     .day-num { font-size: 20px; font-weight: 800; color: #FFF; }
+    .timer-ring{width:140px;height:140px;border-radius:50%;border:4px solid rgba(139,92,246,.15);position:relative;display:flex;align-items:center;justify-content:center}
+    .timer-ring.active{animation:pulse-neon 1.5s ease-in-out infinite;border-color:#8B5CF6}
+    .timer-ring svg{position:absolute;inset:-4px;width:calc(100% + 8px);height:calc(100% + 8px);transform:rotate(-90deg)}
+    .timer-ring circle{fill:none;stroke:#8B5CF6;stroke-width:4;stroke-linecap:round;transition:stroke-dashoffset .3s linear}
+    .progress-bar{height:6px;background:rgba(139,92,246,.15);border-radius:9999px;overflow:hidden}
+    .progress-bar div{height:100%;background:linear-gradient(90deg,#8B5CF6,#EC4899);transition:width .3s linear}
+    @keyframes pulse-neon{0%,100%{box-shadow:0 0 20px rgba(139,92,246,.4),0 0 40px rgba(236,72,153,.2)}50%{box-shadow:0 0 30px rgba(139,92,246,.7),0 0 60px rgba(236,72,153,.4)}}
   </style>
 </head>
 <body>
@@ -318,9 +325,36 @@
   </div>
   
   <div class="space-y-4" id="exercise-cards"></div>
+  <div class="glass p-4 mt-4">
+    <div class="text-xs text-gray-400 uppercase tracking-wider mb-2">Финишер (HIIT)</div>
+    <div class="grid grid-cols-2 gap-2">
+      <button onclick="startFinisher('tabata')" class="btn-ghost text-xs">Табата 20/10×8</button>
+      <button onclick="startFinisher('30-30')" class="btn-ghost text-xs">30/30×10</button>
+      <button onclick="startFinisher('pyramid')" class="btn-ghost text-xs">Пирамида 15-45</button>
+      <button onclick="startFinisher('emom')" class="btn-ghost text-xs">EMOM 12м</button>
+      <button onclick="startFinisher('amrap')" class="btn-ghost text-xs col-span-2">AMRAP 10м</button>
+    </div>
+  </div>
   <div class="mt-8">
     <button onclick="finishWorkout()" class="btn-primary flex items-center justify-center gap-2" id="btn-finish"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Завершить</button>
   </div>
+</section>
+
+<section id="finisher-screen" class="section pt-6 text-center">
+  <div class="flex justify-between items-center mb-6">
+    <button onclick="stopFinisher()" class="text-gray-400 text-sm">← Назад</button>
+    <span class="text-purple font-bold text-sm" id="finisher-mode-label">Финишер</span>
+    <span class="text-gray-500 text-xs" id="finisher-round">—</span>
+  </div>
+  <div class="flex justify-center mb-6">
+    <div id="finisher-ring" class="timer-ring"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" stroke-dasharray="289" stroke-dashoffset="0"/></svg><div class="text-4xl font-black font-mono text-white" id="finisher-display">00:00</div></div>
+  </div>
+  <div class="progress-bar mb-6"><div id="finisher-bar" style="width:0%"></div></div>
+  <div class="grid grid-cols-2 gap-3">
+    <button onclick="stopFinisher()" class="btn-ghost">Стоп</button>
+    <button onclick="startFinisher('tabata')" class="btn-primary">Рестарт</button>
+  </div>
+  <p class="text-gray-500 text-xs mt-4">Звук + вибрация на смену интервала</p>
 </section>
 
 <section id="workout-complete" class="section pt-10 text-center">
@@ -738,23 +772,30 @@ function startRestTimer(seconds){
   if(timerInterval) clearInterval(timerInterval);
   updateTimerDisplay();
   const btn=document.getElementById('btn-timer-start');
+  const ring=document.getElementById('timer-ring');
+  if(ring) ring.classList.add('active');
   timerInterval=setInterval(()=>{
     timerRemaining--;
     updateTimerDisplay();
     if(timerRemaining<=0){
       clearInterval(timerInterval); timerInterval=null;
       if(btn) btn.textContent = 'Готово! 🔔';
-      // вибрация + звук
+      if(ring) ring.classList.remove('active');
       try{ navigator.vibrate && navigator.vibrate([200,100,200]); }catch{}
       try{ const ctx=new (window.AudioContext||window.webkitAudioContext)(); const o=ctx.createOscillator(); o.frequency.value=880; o.connect(ctx.destination); o.start(); setTimeout(()=>o.stop(),400);}catch{}
       setTimeout(()=>{ if(btn) btn.textContent='Старт 90с'; resetTimer(); },3000);
     }
   },1000);
-  if(btn) btn.textContent='Пауза';
-  // повторный клик = пауза
-  if(btn) btn.onclick = ()=>{ if(timerInterval){ clearInterval(timerInterval); timerInterval=null; btn.textContent='Продолжить'; btn.onclick=()=>startRestTimer(); } else { startRestTimer(); } };
+  if(btn){ btn.textContent='Пауза'; btn.onclick = ()=>{ if(timerInterval){ clearInterval(timerInterval); timerInterval=null; btn.textContent='Продолжить'; if(ring) ring.classList.remove('active'); btn.onclick=()=>startRestTimer(); } else { startRestTimer(); } }; }
 }
-function resetTimer(){ if(timerInterval){ clearInterval(timerInterval); timerInterval=null; } timerRemaining=90; updateTimerDisplay(); const btn=document.getElementById('btn-timer-start'); if(btn){ btn.textContent='Старт 90с'; btn.onclick=()=>startRestTimer(90); } }
+function resetTimer(){ if(timerInterval){ clearInterval(timerInterval); timerInterval=null; } timerRemaining=90; updateTimerDisplay(); const btn=document.getElementById('btn-timer-start'); const ring=document.getElementById('timer-ring'); if(ring) ring.classList.remove('active'); if(btn){ btn.textContent='Старт 90с'; btn.onclick=()=>startRestTimer(90); } }
+
+// Finisher HIIT - injected from timer.js
+let finisherInterval=null; let finisherState={mode:null, round:0, total:0, isWork:true, remaining:0};
+const FINISHER_PRESETS={ tabata:{label:'Табата', work:20, rest:10, rounds:8, total:160}, '30-30':{label:'30/30', work:30, rest:30, rounds:10, total:600}, pyramid:{label:'Пирамида', seq:[15,30,45,30,15], rest:15}, emom:{label:'EMOM', work:40, rest:20, rounds:12, total:720}, amrap:{label:'AMRAP', work:600, rest:0, rounds:1} };
+function startFinisher(mode){ const preset=FINISHER_PRESETS[mode]; if(!preset) return; finisherState={mode, round:1, isWork:true, remaining: preset.seq?preset.seq[0]:preset.work, total:preset.rounds*2}; if(mode==='pyramid'){ finisherState.seq=preset.seq; finisherState.seqIdx=0; finisherState.total=preset.seq.length*2-1; } if(mode==='amrap'){ finisherState.remaining=preset.work; } const lbl=document.getElementById('finisher-mode-label'); if(lbl) lbl.textContent=preset.label; showSection('finisher-screen'); runFinisherTick(); }
+function runFinisherTick(){ if(finisherInterval) clearInterval(finisherInterval); const display=document.getElementById('finisher-display'); const roundEl=document.getElementById('finisher-round'); const bar=document.getElementById('finisher-bar'); const ring=document.getElementById('finisher-ring'); const preset=FINISHER_PRESETS[finisherState.mode]; finisherInterval=setInterval(()=>{ finisherState.remaining--; if(display) display.textContent=formatTimer(finisherState.remaining); if(roundEl) roundEl.textContent=`Раунд ${finisherState.round}/${preset.rounds||preset.seq?.length||1} — ${finisherState.isWork?'Работа':'Отдых'}`; if(finisherState.remaining<=0){ try{ const ctx=new (window.AudioContext||window.webkitAudioContext)(); const o=ctx.createOscillator(); o.frequency.value=finisherState.isWork?660:440; o.connect(ctx.destination); o.start(); setTimeout(()=>o.stop(),200);}catch{} try{ navigator.vibrate&&navigator.vibrate(120);}catch{} if(finisherState.mode==='tabata' || finisherState.mode==='30-30' || finisherState.mode==='emom'){ if(!finisherState.isWork){ finisherState.round++; if(finisherState.round>preset.rounds){ clearInterval(finisherInterval); finisherState.mode=null; if(display) display.textContent='Готово!'; setTimeout(()=>showSection('workout-complete'),1500); return; } } finisherState.isWork=!finisherState.isWork; finisherState.remaining=finisherState.isWork?preset.work:preset.rest; } else if(finisherState.mode==='pyramid'){ let nextIsWork=!finisherState.isWork; let nextRemaining; if(nextIsWork){ finisherState.seqIdx++; if(finisherState.seqIdx>=preset.seq.length){ clearInterval(finisherInterval); if(display) display.textContent='Готово!'; setTimeout(()=>showSection('workout-complete'),1500); return; } nextRemaining=preset.seq[finisherState.seqIdx]; } else nextRemaining=preset.rest; finisherState.isWork=nextIsWork; finisherState.remaining=nextRemaining; } else if(finisherState.mode==='amrap'){ clearInterval(finisherInterval); if(display) display.textContent='Время!'; setTimeout(()=>showSection('workout-complete'),1500); return; } if(ring) ring.classList.toggle('active', finisherState.isWork); } },1000); }
+function stopFinisher(){ if(finisherInterval){ clearInterval(finisherInterval); finisherInterval=null; } showSection('active-workout'); }
 
 function renderWorkoutBadge() {
   const badge = document.getElementById('workout-badge');
@@ -802,6 +843,8 @@ function renderExerciseCards() {
     }
     // guard workoutSets
     if(!S.workoutSets[ex.exercise_id]) S.workoutSets[ex.exercise_id]=[];
+    const methodBadge = (ex.suggested_method && ex.suggested_method!=='normal') ? `<span class="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-pink/20 text-pink border border-pink/30">${ex.suggested_method}</span>` : '';
+    const methodHint = (ex.suggested_method && ex.suggested_method!=='normal') ? `<div class="text-[10px] text-pink/80 mb-2">Метод: ${ex.suggested_method} — ${ex.suggested_method==='drop_set'?'дроп-сет: снизь вес после отказа':ex.suggested_method==='rest_pause'?'rest-pause: 15с пауза и ещё подход':ex.suggested_method==='pyramid'?'пирамида: наращивай вес':ex.suggested_method==='amrap'?'AMRAP: максимум за время':ex.suggested_method==='emom'?'EMOM: каждую минуту':''}</div>` : '';
     let setsHTML = S.workoutSets[ex.exercise_id].map((s,i) => `
       <div class="set-row flex items-center gap-2 p-2 rounded-lg border border-transparent ${s.done?'done':''}">
         <span class="text-xs text-gray-500 w-4">#${i+1}</span>
@@ -810,10 +853,11 @@ function renderExerciseCards() {
         <input type="number" value="${s.reps !== '' ? s.reps : ''}" placeholder="${last ? last.reps : ''}" class="input-dark py-1 text-center" onchange="upd(${JSON.stringify(ex.exercise_id)},${i},'reps',this.value)">
         <span class="text-xs">RIR</span>
         <input type="number" value="${s.rir !== '' ? s.rir : ''}" placeholder="${last ? last.rir : 2}" class="input-dark py-1 text-center" onchange="upd(${JSON.stringify(ex.exercise_id)},${i},'rir',this.value)">
+        <select onchange="upd(${JSON.stringify(ex.exercise_id)},${i},'set_type',this.value)" class="input-dark py-1 text-center text-xs w-20"><option value="normal" ${s.set_type==='normal'?'selected':''}>norm</option><option value="drop_set" ${s.set_type==='drop_set'?'selected':''}>drop</option><option value="rest_pause" ${s.set_type==='rest_pause'?'selected':''}>rest</option><option value="pyramid" ${s.set_type==='pyramid'?'selected':''}>pyr</option></select>
         <button onclick="done(${JSON.stringify(ex.exercise_id)},${i})" class="w-8 h-8 rounded bg-purple/20 text-purple flex items-center justify-center"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></button>
       </div>`).join('');
       
-    cont.innerHTML += `<div class="glass p-4 border-l-4 border-purple"><div class="text-white font-bold mb-2">${e.name} <span class="text-xs text-gray-500 font-normal">(${ex.target_sets||ex.sets||3}×${repStr})</span></div>${lastHint}${setsHTML}</div>`;
+    cont.innerHTML += `<div class="glass p-4 border-l-4 border-purple"><div class="text-white font-bold mb-2">${e.name} <span class="text-xs text-gray-500 font-normal">(${ex.target_sets||ex.sets||3}×${repStr})</span>${methodBadge}</div>${methodHint}${lastHint}${setsHTML}</div>`;
   });
   // показать баннер прогрессии если не скрыт
   const hint = document.getElementById('progression-hint');
@@ -824,6 +868,7 @@ function renderExerciseCards() {
 }
 
 window.upd = (eid, idx, field, val) => {
+  if(field==='set_type'){ S.workoutSets[eid][idx][field]=val; return; }
   const num = parseFloat(val);
   S.workoutSets[eid][idx][field] = isNaN(num) ? '' : num;
 };
