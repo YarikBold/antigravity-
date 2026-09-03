@@ -638,6 +638,12 @@ async function selectPlan(planId) {
   } catch(e) { alert('Ошибка: ' + e.message); }
 }
 
+function dayLabelText(d) {
+  const isFullBodyAB = S.planData?.plan?.split_type === 'full_body';
+  if (isFullBodyAB) return 'День ' + (d === 1 ? 'А' : d === 2 ? 'Б' : d);
+  return 'День ' + d;
+}
+
 function renderDayButtons() {
   const cont = document.getElementById('day-buttons');
   if (!cont) return;
@@ -647,7 +653,7 @@ function renderDayButtons() {
   days.forEach(d => {
     let btn = document.createElement('button');
     btn.className = 'glass p-4 text-left card-hover';
-    btn.innerHTML = `<div class="text-purple font-bold uppercase text-xs mb-1">День ${d}</div><div class="text-white font-bold">Начать</div>`;
+    btn.innerHTML = `<div class="text-purple font-bold uppercase text-xs mb-1">${dayLabelText(d)}</div><div class="text-white font-bold">Начать</div>`;
     btn.onclick = () => initReadiness(d);
     cont.appendChild(btn);
   });
@@ -800,7 +806,7 @@ function startWorkout() {
       S.workoutSets[ex.exercise_id] = arr;
     });
     const dayLabel = document.getElementById('workout-day-label');
-    if (dayLabel) dayLabel.textContent = 'День ' + S.selectedDay;
+    if (dayLabel) dayLabel.textContent = dayLabelText(S.selectedDay);
     renderWorkoutBadge();
     renderExerciseCards();
     resetTimer();
@@ -872,7 +878,7 @@ function renderWorkoutBadge() {
   badge.innerHTML = `
     <span class="glass px-3 py-1 text-xs font-bold text-purple">Неделя ${weekNum}</span>
     <span class="glass px-3 py-1 text-xs font-bold text-pink">${dayType}</span>
-    <span class="glass px-3 py-1 text-xs text-gray-400">День ${S.selectedDay}</span>
+    <span class="glass px-3 py-1 text-xs text-gray-400">${dayLabelText(S.selectedDay)}</span>
   `;
 }
 
