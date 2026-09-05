@@ -4,7 +4,10 @@ OLYMPIC_BAR = 20.0
 PLATES = [25, 20, 15, 10, 5, 2.5, 1.25]
 
 def round_to_plate(x: float) -> float:
-    return round(x * 2) / 2  # 2.5 kg step
+    """Округление до шага 2.5 кг (спецификация: warm-up и рабочие веса)."""
+    if x is None or x <= 0:
+        return 0.0
+    return round(round(x / 2.5) * 2.5, 2)
 
 def warmup_sets(working_weight: float, equipment: str = "barbell") -> list[dict]:
     """3 разминки: 40%x8, 60%x5, 80%x2 if working_weight >=40 else []"""

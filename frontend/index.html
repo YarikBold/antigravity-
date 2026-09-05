@@ -1,1576 +1,268 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Antigravity — AI Workout Tracker</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css">
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            dark: { DEFAULT:'#121212', 800:'#1a1a2e', 700:'#1e1e32', 600:'#2a2a3e', 500:'#3a3a4e' },
-            purple: { DEFAULT:'#8B5CF6', light:'#A78BFA', dark:'#7C3AED', glow:'rgba(139,92,246,0.4)' },
-            pink: { DEFAULT:'#EC4899', neon:'#F472B6', glow:'rgba(236,72,153,0.4)' },
-          }
-        }
-      }
-    };
-  </script>
-  <style>
-    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-    body{background:#121212;color:#e5e7eb;font-family:'Inter',system-ui,sans-serif;min-height:100dvh;overflow-x:hidden}
-    .section{display:none !important;animation:fadeUp .2s ease-out}.section.active{display:block !important}
-    #loading-screen.active{display:flex !important}
-    @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    .spinner{width:36px;height:36px;border:3px solid rgba(139,92,246,.15);border-top-color:#8B5CF6;border-radius:50%;animation:spin .7s linear infinite}
-    .grad-text{background:linear-gradient(135deg,#8B5CF6,#EC4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-    .grad-border{position:relative;border-radius:16px}
-    .grad-border::before{content:'';position:absolute;inset:0;border-radius:16px;padding:2px;background:linear-gradient(135deg,#8B5CF6,#EC4899);-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none}
-    .glass{background:rgba(30,30,46,.55);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(139,92,246,.12);border-radius:16px}
-    .card-hover{transition:transform .2s,box-shadow .2s}.card-hover:hover{transform:translateY(-4px);box-shadow:0 12px 40px rgba(139,92,246,.25)}
-    .btn-primary{background:linear-gradient(135deg,#8B5CF6,#EC4899);color:#fff;border:none;border-radius:12px;padding:14px 28px;font-weight:600;font-size:15px;cursor:pointer;transition:opacity .2s,transform .15s;width:100%}
-    .btn-primary:active{transform:scale(.96)}
-    .btn-ghost{background:rgba(139,92,246,.12);color:#A78BFA;border:1px solid rgba(139,92,246,.2);border-radius:12px;padding:10px 20px;font-weight:500;cursor:pointer;transition:all .2s}
-    .input-dark{background:rgba(42,42,62,.6);border:1px solid rgba(139,92,246,.15);border-radius:10px;color:#e5e7eb;padding:10px 14px;font-size:15px;width:100%;transition:border-color .2s}
-    .input-dark:focus{outline:none;border-color:#8B5CF6}
-    .set-row.done{opacity:.5;background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.3)}
-    /* Muscle chips - clickable pills */
-    .muscle-chip{transition:all .15s;user-select:none}
-    .muscle-chip.active{background:linear-gradient(135deg,#8B5CF6,#EC4899);color:#fff;border-color:transparent;box-shadow:0 4px 16px rgba(139,92,246,.35)}
-    /* Pain slider - rainbow */
-    #pain-level{-webkit-appearance:none;appearance:none;height:10px;border-radius:9999px;background:linear-gradient(to right,#22C55E 0%,#84CC16 25%,#EAB308 45%,#F97316 65%,#EF4444 85%,#DC2626 100%);outline:none}
-    #pain-level::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#fff;border:3px solid #8B5CF6;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4)}
-    #pain-level::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:#fff;border:3px solid #8B5CF6;cursor:pointer}
-    .icon{width:22px;height:22px;flex-shrink:0}
-    
-    /* Calendar Scroll */
-    .cal-scroll { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 10px; padding-bottom: 8px; -webkit-overflow-scrolling: touch; }
-    .cal-scroll::-webkit-scrollbar { display: none; }
-    .cal-day { flex: 0 0 70px; scroll-snap-align: center; text-align: center; padding: 12px 0; border-radius: 14px; background: rgba(30,30,46,.5); border: 1px solid rgba(139,92,246,.1); transition: all 0.2s; position: relative; }
-    .cal-day.today { border-color: #8B5CF6; box-shadow: 0 0 15px rgba(139,92,246,0.3); }
-    .cal-day.scheduled { border-bottom: 3px solid #EC4899; }
-    .cal-day.completed { border-bottom: 3px solid #22C55E; background: rgba(34,197,94,0.1); }
-    .cal-day.missed { border-bottom: 3px solid #EF4444; background: rgba(239,68,68,0.1); }
-    .day-name { font-size: 11px; text-transform: uppercase; color: #9CA3AF; font-weight: 600; margin-bottom: 4px; }
-    .day-num { font-size: 20px; font-weight: 800; color: #FFF; }
-
-    /* === Cardio Runner === */
-    #cardio-runner.active { display:flex !important; flex-direction:column; }
-    .cr-timer { font-size: 72px; font-weight: 900; font-family: 'Inter', monospace; line-height: 1; letter-spacing: -2px; }
-    .cr-phase-bar { display:flex; gap:4px; }
-    .cr-phase-seg { flex:1; height:6px; border-radius:9999px; background:rgba(139,92,246,.15); transition: background .3s; }
-    .cr-phase-seg.done { background: #22C55E; }
-    .cr-phase-seg.active { background: linear-gradient(90deg,#8B5CF6,#EC4899); animation: pulse-neon 1.5s ease-in-out infinite; }
-    .cr-station { font-size: 22px; font-weight: 800; line-height: 1.2; }
-    .cr-minute-timer { font-size: 56px; font-weight: 900; font-family: 'Inter', monospace; }
-    .cr-round-badge { display:inline-flex; align-items:center; gap:6px; padding:6px 16px; border-radius:12px; font-weight:700; font-size:14px; }
-    @keyframes cr-flash { 0%,100%{opacity:1} 50%{opacity:.3} }
-    .cr-flash { animation: cr-flash .5s ease-in-out 3; }
-    .cr-hint { font-size: 13px; color: #9CA3AF; line-height: 1.4; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Antigravity</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = { theme: { extend: { colors: { purple: '#8B5CF6', pink: '#EC4899' } } } };
+</script>
+<link rel="stylesheet" href="/css/style.css">
 </head>
-<body>
+<body class="bg-[#121212] text-gray-200">
 
-<header id="app-header" class="hidden sticky top-0 z-50 glass px-4 py-3" style="border-radius:0;border-top:none;border-left:none;border-right:none">
-  <div class="max-w-lg mx-auto flex items-center justify-between">
-    <h1 class="text-lg font-black tracking-tight grad-text">ANTIGRAVITY</h1>
-    <div class="flex items-center gap-3">
-      <button onclick="launchCardioRunner()" class="text-xs px-3 py-1.5 rounded-lg font-bold flex items-center gap-1" style="background:linear-gradient(135deg,#F59E0B,#EF4444);color:#fff;border:none;cursor:pointer" title="Запустить кардио-сессию">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 6.75 6.75 0 009 18.75a6.768 6.768 0 006.362-13.536z"/></svg>
-        Кардио
-      </button>
-      <span id="header-user" class="text-xs text-gray-400"></span>
-      <button onclick="logout()" class="text-gray-500 hover:text-white text-xs">Выйти</button>
+<!-- ===== Выбор профиля ===== -->
+<section id="profile-select" class="section active">
+  <div class="max-w-md mx-auto px-4 pt-16">
+    <div class="text-center mb-10">
+      <div class="text-4xl font-black grad-text mb-2">ANTIGRAVITY</div>
+      <div class="text-gray-500 text-sm">Выбери профиль</div>
     </div>
+    <div class="space-y-3">
+      <button onclick="selectProfile('1')" class="glass p-5 card-hover w-full text-left flex items-center gap-4">
+        <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl" style="background:linear-gradient(135deg,rgba(139,92,246,.2),rgba(236,72,153,.2))">💪</div>
+        <div><div class="text-white font-bold text-lg">Ярик</div><div class="text-gray-400 text-sm">Full Body A/B • Сушка 78→72 • Подтягивания</div></div>
+      </button>
+      <button onclick="selectProfile('2')" class="glass p-5 card-hover w-full text-left flex items-center gap-4">
+        <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl" style="background:linear-gradient(135deg,rgba(236,72,153,.2),rgba(139,92,246,.2))">🍑</div>
+        <div><div class="text-white font-bold text-lg">Олеся</div><div class="text-gray-400 text-sm">Низ/Верх/Низ • Набор 46→49 • Ягодицы</div></div>
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ===== Loading ===== -->
+<section id="loading-screen" class="section">
+  <div class="max-w-md mx-auto px-4" style="min-height:100dvh;display:flex;align-items:center;justify-content:center">
+    <div class="text-center"><div class="spinner mx-auto mb-4"></div><div class="text-gray-400">Загружаю план...</div></div>
+  </div>
+</section>
+
+<!-- ===== Header ===== -->
+<header id="app-header" class="sticky top-0 z-40 glass !rounded-none !border-x-0 !border-t-0 px-4 py-3">
+  <div class="max-w-md mx-auto flex items-center justify-between">
+    <div class="font-black grad-text text-lg">ANTIGRAVITY</div>
+    <nav class="flex items-center gap-1 text-xs font-bold">
+      <button onclick="showSection('dashboard')" class="px-3 py-1.5 rounded-lg bg-purple/15 text-purple">ТРЕНИРОВКИ</button>
+      <button onclick="loadBench()" class="px-3 py-1.5 rounded-lg text-gray-400 hover:text-purple">ЖИМ-КАЛЕНДАРЬ</button>
+      <button onclick="launchCardioRunner()" class="px-3 py-1.5 rounded-lg font-bold" style="color:#F59E0B;background:rgba(245,158,11,.12)">⚡ КАРДИО</button>
+      <button onclick="logout()" class="px-2 py-1.5 rounded-lg text-gray-500 hover:text-white" id="header-user">•</button>
+    </nav>
   </div>
 </header>
 
-<main class="max-w-lg mx-auto px-4 pb-24">
+<main class="max-w-md mx-auto px-4 pb-24">
 
-<section id="profile-select" class="section active pt-16">
-  <div class="text-center mb-10">
-    <div class="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-purple to-pink flex items-center justify-center mb-4">
-      <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.5 14.5L12 12m0 0l2.5 2.5M12 12V3m0 9l-2.5-2.5M12 12l2.5-2.5M12 21a9 9 0 110-18 9 9 0 010 18z"/></svg>
-    </div>
-    <h1 class="text-3xl font-black grad-text mb-2">ANTIGRAVITY</h1>
-    <p class="text-gray-400 text-sm">AI-трекер силовых тренировок</p>
-  </div>
-  <div class="space-y-4">
-    <button onclick="selectProfile('11111111-1111-1111-1111-111111111111')" class="w-full grad-border card-hover">
-      <div class="glass p-6 flex items-center gap-5" style="border-radius:14px">
-        <div class="w-12 h-12 rounded-xl bg-purple/20 flex items-center justify-center">
-          <svg class="w-7 h-7 text-purple" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-        </div>
-        <div class="text-left flex-1">
-          <div class="font-bold text-white text-lg">Ярик</div>
-          <div class="text-gray-400 text-sm mt-1">Возврат к тренировкам • Сброс веса</div>
+<!-- ===== Дашборд ===== -->
+<section id="dashboard" class="section">
+  <div class="pt-5">
+    <div class="text-2xl font-black text-white" id="dash-name">...</div>
+    <div class="text-gray-500 text-sm mb-4" id="dash-goal"></div>
+
+    <div class="glass p-4 mb-4">
+      <div class="flex items-center justify-between mb-3">
+        <div class="text-xs font-bold text-gray-400 uppercase" id="cal-month-label"></div>
+        <div class="flex gap-1">
+          <button onclick="shiftWeek(-1)" class="w-8 h-8 rounded-lg bg-white/5 text-gray-400">‹</button>
+          <button onclick="shiftWeek(1)" class="w-8 h-8 rounded-lg bg-white/5 text-gray-400">›</button>
         </div>
       </div>
-    </button>
-    <button onclick="selectProfile('22222222-2222-2222-2222-222222222222')" class="w-full grad-border card-hover">
-      <div class="glass p-6 flex items-center gap-5" style="border-radius:14px">
-        <div class="w-12 h-12 rounded-xl bg-pink/20 flex items-center justify-center">
-          <svg class="w-7 h-7 text-pink" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-        </div>
-        <div class="text-left flex-1">
-          <div class="font-bold text-white text-lg">Олеся</div>
-          <div class="text-gray-400 text-sm mt-1">Тонус • Ягодицы, ноги, грудь</div>
-        </div>
+      <div class="cal-scroll" id="calendar-bar"></div>
+      <div id="missed-warning" class="hidden mt-3 text-xs text-red-400 flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9.303 3.376c.866 1.5-.217 3.374-1.948 3.374H3.935c-1.73 0-2.813-1.874-1.948-3.374L10.05 3.378c.866-1.5 3.032-1.5 3.898 0l8.063 13.748z"/></svg>
+        Пропущена тренировка — не сдавайся!
       </div>
-    </button>
-  </div>
-</section>
-
-<section id="dashboard" class="section pt-6">
-  <div class="mb-6 flex justify-between items-end">
-    <div>
-      <p class="text-gray-400 text-sm mb-1">Добро пожаловать</p>
-      <h2 class="text-2xl font-black text-white" id="dash-name"></h2>
     </div>
-    <button onclick="showSection('schedule-config')" class="btn-ghost text-xs py-2 px-3 flex items-center gap-1">График <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg></button>
-  </div>
 
-  <!-- Calendar UI -->
-  <div class="mb-8">
-    <div class="flex justify-between items-center mb-3">
-      <button onclick="shiftWeek(-1)" class="w-8 h-8 rounded-full glass flex items-center justify-center text-purple"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg></button>
-      <h3 class="text-sm font-semibold text-gray-300 uppercase tracking-wider flex-1 text-center">
-        Календарь тренировок
-        <span id="cal-month-label" class="text-xs text-purple font-bold ml-2"></span>
-      </h3>
-      <button onclick="shiftWeek(1)" class="w-8 h-8 rounded-full glass flex items-center justify-center text-purple"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg></button>
+    <div class="glass p-4 mb-4" id="plan-card">
+      <div class="text-xs text-gray-500 uppercase font-bold mb-1">Текущая программа</div>
+      <div class="text-white font-bold" id="dash-plan-name"></div>
+      <div class="text-gray-400 text-xs mt-1" id="dash-plan-desc"></div>
     </div>
-    <div class="cal-scroll" id="calendar-bar">
-      <!-- Generated via JS -->
-    </div>
-    <p id="missed-warning" class="hidden mt-3 text-xs text-red-400 bg-red-500/10 p-2 rounded-lg border border-red-500/20 flex items-center gap-2">
-      <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg>
-      Пропущена тренировка! Мы перенесли её на сегодня.
-    </p>
-  </div>
 
-  <!-- Pull-up Guide for Yaroslav -->
-  <div id="pullup-guide" class="hidden glass p-5 mb-6" style="border-left: 3px solid #8B5CF6;">
-    <div class="flex items-center justify-between mb-2">
-      <h3 class="text-white font-bold text-sm flex items-center gap-2"><svg class="w-4 h-4 text-purple" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Цель: Первое подтягивание</h3>
-      <span class="w-6 h-6 rounded bg-purple/20 flex items-center justify-center"><svg class="w-4 h-4 text-purple" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 15l-2 5L9 9l11 4-5 2z"/></svg></span>
-    </div>
-    <p class="text-gray-400 text-xs mb-3">
-      Так как ты делаешь 0 раз, мы добавили спец. упражнения: <b>Негативные подтягивания</b> и <b>Австралийские</b>. Фокусируйся на медленном опускании (3-5 секунд). Когда сможешь сделать 5 негативных фаз уверенно — ты сделаешь 1 полноценное!
-    </p>
-  </div>
-
-  <div class="glass p-5 mb-6">
-    <div class="flex items-center justify-between mb-1">
-      <div class="text-xs text-gray-400 uppercase tracking-wider">Программа</div>
-      <button onclick="showSection('plan-select')" class="text-purple text-xs hover:text-white">Сменить</button>
-    </div>
-    <div class="text-lg font-bold text-white" id="dash-plan-name"></div>
-    <p class="text-gray-500 text-xs mt-1" id="dash-plan-desc"></p>
-  </div>
-
-  <div class="mb-4">
-    <h3 class="text-sm font-semibold text-gray-300 mb-3 uppercase tracking-wider">Доступные дни программы</h3>
+    <div class="text-xs font-bold text-gray-400 uppercase mb-2">Сегодня</div>
     <div class="grid grid-cols-2 gap-3" id="day-buttons"></div>
-  </div>
-  
-  <button onclick="showSection('pullup-plan')" class="btn-ghost w-full mt-4 flex items-center justify-center gap-2">
-    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941"/></svg> План подтягиваний: прогрессия к первому
-  </button>
-</section>
 
-<!-- Pull-up Plan -->
-<section id="pullup-plan" class="section pt-6">
-  <button onclick="showSection('dashboard')" class="text-gray-400 hover:text-white text-sm mb-4">← Назад</button>
-  <h2 class="text-xl font-bold text-white mb-2 flex items-center gap-2"><svg class="w-6 h-6 text-purple" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941"/></svg> План подтягиваний</h2>
-  <p class="text-gray-400 text-sm mb-6">Прогрессия от 0 к первому чистому подтягиванию. Делай 2-3 раза в неделю.</p>
-  
-  <div class="space-y-4" id="pullup-stages">
-    <!-- Generated by JS -->
-  </div>
-  
-  <div class="mt-6 glass p-4">
-    <h3 class="text-white font-bold mb-3 flex items-center gap-2"><svg class="w-5 h-5 text-purple" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13h10V3H3v10zm0 8h10v-6H3v6zm12 0h10V11H15v10zm0-18v6h10V3H15z"/></svg> Твой прогресс</h3>
-    <div class="space-y-2" id="pullup-progress">
-      <!-- Filled by JS -->
-    </div>
+    <button onclick="showSection('plan-select')" class="btn-ghost w-full mt-3 text-sm">Сменить программу</button>
   </div>
 </section>
 
-<!-- Schedule Configuration -->
-<section id="schedule-config" class="section pt-6">
-  <button onclick="showSection('dashboard')" class="text-gray-400 hover:text-white text-sm mb-4">← Назад</button>
-  <h2 class="text-xl font-bold text-white mb-2">Настройка графика</h2>
-  <p class="text-gray-400 text-sm mb-6">Выбери до 4 дней в неделю для тренировок.</p>
-  
-  <div class="grid grid-cols-2 gap-3 mb-8" id="schedule-days-grid">
-    <label class="glass p-4 flex items-center gap-3 cursor-pointer"><input type="checkbox" value="1" class="sched-cb"> ПН</label>
-    <label class="glass p-4 flex items-center gap-3 cursor-pointer"><input type="checkbox" value="2" class="sched-cb"> ВТ</label>
-    <label class="glass p-4 flex items-center gap-3 cursor-pointer"><input type="checkbox" value="3" class="sched-cb"> СР</label>
-    <label class="glass p-4 flex items-center gap-3 cursor-pointer"><input type="checkbox" value="4" class="sched-cb"> ЧТ</label>
-    <label class="glass p-4 flex items-center gap-3 cursor-pointer"><input type="checkbox" value="5" class="sched-cb"> ПТ</label>
-    <label class="glass p-4 flex items-center gap-3 cursor-pointer"><input type="checkbox" value="6" class="sched-cb"> СБ</label>
-    <label class="glass p-4 flex items-center gap-3 cursor-pointer"><input type="checkbox" value="0" class="sched-cb"> ВС</label>
-  </div>
-  <button onclick="saveSchedule()" class="btn-primary" id="btn-save-sched">Сохранить</button>
+<!-- ===== Выбор плана ===== -->
+<section id="plan-select" class="section">
+  <div class="pt-5"><div class="text-2xl font-black text-white mb-4">Программы</div><div class="space-y-3" id="plan-list"></div></div>
 </section>
 
-<!-- Plan Selection -->
-<section id="plan-select" class="section pt-6">
-  <button onclick="showSection('dashboard')" class="text-gray-400 hover:text-white text-sm mb-4">← Назад</button>
-  <h2 class="text-xl font-bold text-white mb-2">Выбор программы</h2>
-  <p class="text-gray-400 text-sm mb-6">Выбери программу тренировок. Прогресс весов сохраняется отдельно для каждой.</p>
-  
-  <div class="space-y-4" id="plan-list">
-    <!-- Generated by JS -->
+<!-- ===== Readiness (DOMS + боль) ===== -->
+<section id="readiness-form" class="section">
+  <div class="pt-5">
+    <div class="text-2xl font-black text-white mb-1">Как тело?</div>
+    <div class="text-gray-500 text-sm mb-4">Что болит после прошлой тренировки?</div>
+    <div class="flex flex-wrap gap-2 mb-6" id="muscle-chips">
+      <button onclick="toggleMuscle(this)" class="muscle-chip glass px-3 py-2 text-sm"><input type="checkbox" class="sore-cb hidden" value="chest">Грудь</button>
+      <button onclick="toggleMuscle(this)" class="muscle-chip glass px-3 py-2 text-sm"><input type="checkbox" class="sore-cb hidden" value="back">Спина</button>
+      <button onclick="toggleMuscle(this)" class="muscle-chip glass px-3 py-2 text-sm"><input type="checkbox" class="sore-cb hidden" value="shoulders">Плечи</button>
+      <button onclick="toggleMuscle(this)" class="muscle-chip glass px-3 py-2 text-sm"><input type="checkbox" class="sore-cb hidden" value="biceps">Бицепс</button>
+      <button onclick="toggleMuscle(this)" class="muscle-chip glass px-3 py-2 text-sm"><input type="checkbox" class="sore-cb hidden" value="triceps">Трицепс</button>
+      <button onclick="toggleMuscle(this)" class="muscle-chip glass px-3 py-2 text-sm"><input type="checkbox" class="sore-cb hidden" value="quads">Квадрицепс</button>
+      <button onclick="toggleMuscle(this)" class="muscle-chip glass px-3 py-2 text-sm"><input type="checkbox" class="sore-cb hidden" value="hamstrings">Бицепс бедра</button>
+      <button onclick="toggleMuscle(this)" class="muscle-chip glass px-3 py-2 text-sm"><input type="checkbox" class="sore-cb hidden" value="glutes">Ягодицы</button>
+    </div>
+    <div class="mb-6">
+      <div class="flex justify-between mb-2"><span class="text-sm text-gray-400">Боль (0–10)</span><span class="font-bold" id="pain-value">1 / 10</span></div>
+      <input type="range" min="0" max="10" value="1" id="pain-level" class="w-full" oninput="updatePain(this.value)">
+      <div class="flex justify-between text-[10px] text-gray-600 mt-1"><span>0 — ничего</span><span>10 — невыносимо</span></div>
+    </div>
+    <div id="readiness-result" class="hidden mb-4"></div>
+    <button onclick="checkReadiness()" id="btn-check-readiness" class="btn-primary flex items-center justify-center gap-2">Проверить</button>
+    <button onclick="skipReadiness()" class="btn-ghost w-full mt-2 text-sm">Пропустить</button>
   </div>
 </section>
 
-<!-- Readiness Form (ТЗ: проверка DOMS перед тренировкой) -->
-<section id="readiness-form" class="section pt-6">
-  <button onclick="showSection('dashboard')" class="text-gray-400 hover:text-white text-sm mb-4">← Назад</button>
-  <h2 class="text-xl font-bold text-white mb-2">Проверка готовности</h2>
-  <p class="text-gray-400 text-sm mb-6">Есть крепатура (DOMS) или боль? Отметь где болит и оцени по 10-балльной шкале. ИИ подберёт замены.</p>
-
-  <div class="glass p-4 mb-4">
-    <div class="text-xs text-gray-400 uppercase tracking-wider mb-3">Где болит? (можно несколько) — нажми на плашку</div>
-    <div class="grid grid-cols-2 gap-2" id="sore-muscles-grid">
-      <button type="button" data-muscle="chest" onclick="toggleMuscle(this)" class="muscle-chip glass p-3 text-sm text-left">Грудь<input type="checkbox" value="chest" class="sore-cb hidden"></button>
-      <button type="button" data-muscle="back" onclick="toggleMuscle(this)" class="muscle-chip glass p-3 text-sm text-left">Спина<input type="checkbox" value="back" class="sore-cb hidden"></button>
-      <button type="button" data-muscle="shoulders" onclick="toggleMuscle(this)" class="muscle-chip glass p-3 text-sm text-left">Плечи<input type="checkbox" value="shoulders" class="sore-cb hidden"></button>
-      <button type="button" data-muscle="biceps" onclick="toggleMuscle(this)" class="muscle-chip glass p-3 text-sm text-left">Бицепс<input type="checkbox" value="biceps" class="sore-cb hidden"></button>
-      <button type="button" data-muscle="triceps" onclick="toggleMuscle(this)" class="muscle-chip glass p-3 text-sm text-left">Трицепс<input type="checkbox" value="triceps" class="sore-cb hidden"></button>
-      <button type="button" data-muscle="quads" onclick="toggleMuscle(this)" class="muscle-chip glass p-3 text-sm text-left">Квадрицепс<input type="checkbox" value="quads" class="sore-cb hidden"></button>
-      <button type="button" data-muscle="hamstrings" onclick="toggleMuscle(this)" class="muscle-chip glass p-3 text-sm text-left">Бедро заднее<input type="checkbox" value="hamstrings" class="sore-cb hidden"></button>
-      <button type="button" data-muscle="glutes" onclick="toggleMuscle(this)" class="muscle-chip glass p-3 text-sm text-left">Ягодицы<input type="checkbox" value="glutes" class="sore-cb hidden"></button>
-    </div>
+<!-- ===== Разминка ===== -->
+<section id="warmup-screen" class="section">
+  <div class="pt-5">
+    <div class="text-2xl font-black text-white mb-1" id="warmup-title">Разминка</div>
+    <div class="text-gray-500 text-sm mb-4">5–7 минут, разогрей суставы и пульс</div>
+    <div class="space-y-2 mb-6" id="warmup-list"></div>
+    <button onclick="startWorkout()" class="btn-primary">Начать тренировку →</button>
   </div>
-
-  <div class="glass p-4 mb-4">
-    <div class="flex justify-between items-center mb-2">
-      <span class="text-xs text-gray-400 uppercase tracking-wider">Уровень боли</span>
-      <span class="text-purple font-bold" id="pain-value">1 / 10</span>
-    </div>
-    <input type="range" min="1" max="10" value="1" id="pain-level" class="w-full" oninput="updatePain(this.value)">
-    <div class="flex justify-between text-[10px] text-gray-500 mt-1"><span>1 — нет боли</span><span>10 — сильная</span></div>
-    <p class="text-xs text-gray-500 mt-2">Если &lt; 7 — ИИ не вызывается, сразу к разминке. Если ≥7 — AI google/gemini-2.0-flash-exp:free подберёт замены.</p>
-  </div>
-
-  <button onclick="checkReadiness()" class="btn-primary mb-3 flex items-center justify-center gap-2" id="btn-check-readiness"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 110-16 8 8 0 010 16z"/></svg> Проверить</button>
-  <button onclick="skipReadiness()" class="btn-ghost w-full text-sm flex items-center justify-center gap-2">Пропустить <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg> Разминка</button>
-
-  <div id="readiness-result" class="hidden mt-4 glass p-4"></div>
 </section>
 
-<!-- Warmup Screen -->
-<section id="warmup-screen" class="section pt-10">
-  <button onclick="showSection('dashboard')" class="text-gray-400 hover:text-white text-sm mb-4">← Отмена</button>
-  <h2 class="text-2xl font-black text-white mb-2" id="warmup-title">Подготовка</h2>
-  <p class="text-gray-400 text-sm mb-8">Сделай быструю суставную разминку перед тяжелыми весами.</p>
-
-  <div class="space-y-4 mb-8" id="warmup-list">
-    <!-- Generated dynamically based on upper/lower -->
-  </div>
-
-  <button onclick="startWorkout()" class="btn-primary flex items-center justify-center gap-2">Начать тренировку <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></button>
-</section>
-
-<section id="active-workout" class="section pt-6">
-  <div class="flex items-center justify-between mb-5">
-    <div>
-      <h2 class="text-xl font-bold text-white">Тренировка</h2>
-      <p class="text-purple font-bold text-sm" id="workout-day-label"></p>
-      <!-- Badge: week/day info -->
-      <div id="workout-badge" class="mt-2 flex items-center gap-2"></div>
+<!-- ===== Активная тренировка ===== -->
+<section id="active-workout" class="section">
+  <div class="pt-4">
+    <div class="flex items-center justify-between mb-1">
+      <div class="text-xl font-black text-white" id="workout-day-label">День</div>
+      <div class="flex gap-2 text-xs" id="workout-badge"></div>
     </div>
-    <button onclick="showSection('dashboard')" class="text-red-400 text-sm font-medium">Отмена</button>
-  </div>
-  
-  <!-- RIR Tooltip -->
-  <div class="glass p-3 mb-4 flex items-center gap-3 text-xs" style="border-left:3px solid #8B5CF6">
-    <span class="text-purple font-bold">RIR</span>
-    <span class="text-gray-300">(Reps In Reserve)</span>
-    <span class="text-gray-500">— сколько повторений осталось в запасе.</span>
-    <span class="text-green-400 font-mono">0</span>
-    <span class="text-gray-500">= до отказа,</span>
-    <span class="text-yellow-400 font-mono">1-2</span>
-    <span class="text-gray-500">= в запасе 1-2 повт.,</span>
-    <span class="text-purple font-mono">3+</span>
-    <span class="text-gray-500">= легко.</span>
-  </div>
-
-  <!-- Progression hint - нельзя убрать крестиком, только кликом пропадает -->
-  <div id="progression-hint" onclick="dismissProgressionHint()" class="glass p-3 mb-4 flex items-center gap-3 cursor-pointer" style="border-left:3px solid #22C55E">
-    <div class="w-8 h-8 rounded-lg bg-green-500/15 flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941"/></svg></div>
-    <div class="flex-1">
-      <div class="text-white font-bold text-xs">Авто-прогрессия: введи 1 подход</div>
-      <div class="text-gray-400 text-[11px] leading-tight">Формула ТЗ: если в подходе RIR ≥1 и повторы ≥ цели (напр. 12) → следующий подход и след. тренировка предложит <span class="text-green-400 font-bold">+2.5 кг</span>. Нажми чтобы скрыть.</div>
-    </div>
-    <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-  </div>
-
-  <!-- Rest Timer (ТЗ) -->
-  <div class="glass p-4 mb-4 flex items-center justify-between">
-    <div class="flex items-center gap-3">
-      <div class="w-10 h-10 rounded-xl bg-purple/15 flex items-center justify-center"><svg class="w-5 h-5 text-purple" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
-      <div>
-        <div class="text-white font-bold text-lg font-mono" id="timer-display">01:30</div>
-        <div class="text-gray-500 text-xs">отдых между подходами</div>
-      </div>
-    </div>
-    <div class="flex gap-2">
-      <button onclick="startRestTimer(90)" class="btn-ghost py-2 px-4 text-sm" id="btn-timer-start">Старт 90с</button>
-      <button onclick="resetTimer()" class="btn-ghost py-2 px-2 text-xs">Сброс</button>
-    </div>
-  </div>
-  <div class="flex gap-2 mb-4">
-    <button onclick="startRestTimer(60)" class="glass flex-1 py-2 text-xs">60с</button>
-    <button onclick="startRestTimer(90)" class="glass flex-1 py-2 text-xs">90с</button>
-    <button onclick="startRestTimer(120)" class="glass flex-1 py-2 text-xs">120с</button>
-    <button onclick="startRestTimer(180)" class="glass flex-1 py-2 text-xs">180с</button>
-  </div>
-
-  <!-- Tempo metronome [18] -->
-  <div class="glass p-3 mb-4 flex items-center justify-between">
-    <div class="flex items-center gap-2">
-      <div id="metronome-circle" class="w-8 h-8 rounded-full bg-purple/20 border-2 border-purple/30 flex items-center justify-center text-xs">♩</div>
-      <div><div class="text-xs text-gray-400">Темпо-метроном</div><div class="text-[10px] text-purple" id="metronome-phase">3-0-1-0</div></div>
-    </div>
-    <div class="flex gap-2">
-      <select id="metronome-tempo" class="input-dark py-1 text-xs w-24"><option value="3-0-1-0">3-0-1-0</option><option value="2-0-1-0">2-0-1-0</option><option value="3-1-1-0">3-1-1-0</option></select>
-      <button onclick="startMetronome(document.getElementById('metronome-tempo').value)" class="btn-ghost text-xs py-1 px-2">Старт</button>
-      <button onclick="stopMetronome()" class="btn-ghost text-xs py-1 px-2">Стоп</button>
-    </div>
-  </div>
-  
-  <div class="space-y-4" id="exercise-cards"></div>
-  <div class="glass p-4 mt-4">
-    <div class="text-xs text-gray-400 uppercase tracking-wider mb-2">Финишер (HIIT) — добей мышцу в конце</div>
-    <div class="grid grid-cols-2 gap-2">
-      <button onclick="startFinisher('tabata')" class="btn-ghost text-xs">Табата 20/10×8</button>
-      <button onclick="startFinisher('30-30')" class="btn-ghost text-xs">30/30×10</button>
-      <button onclick="startFinisher('pyramid')" class="btn-ghost text-xs">Пирамида 15-45</button>
-      <button onclick="startFinisher('emom')" class="btn-ghost text-xs">EMOM 12м</button>
-      <button onclick="startFinisher('amrap')" class="btn-ghost text-xs col-span-2">AMRAP 10м</button>
-    </div>
-  </div>
-
-  <!-- Памятка: методы и финишеры -->
-  <div class="glass p-0 mt-4 overflow-hidden">
-    <button onclick="toggleCheatSheet()" class="w-full flex items-center justify-between p-4 text-left hover:bg-white/5 transition">
-      <span class="text-sm font-bold text-white flex items-center gap-2"><svg class="w-4 h-4 text-purple" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12 12 12m0 0 2.5 2.5M12 12V3m0 9-2.5-2.5M12 12l2.5-2.5M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 12a3 3 0 0 1-3-3V7a3 3 0 0 1 6 0v2a3 3 0 0 1-3 3Z"/></svg> Памятка: что такое методы и финишеры?</span>
-      <span id="cheat-icon" class="text-purple text-xs transition-transform">▼</span>
-    </button>
-    <div id="cheat-sheet" class="hidden px-4 pb-4 space-y-4 text-xs leading-relaxed border-t border-white/5 pt-4">
-      <div>
-        <div class="text-purple font-bold uppercase tracking-wider mb-2">Продвинутые методы — выбирай в подходе (селект norm/drop/rest/pyr)</div>
-        <div class="space-y-2">
-          <div class="flex gap-2"><span class="px-1.5 py-0.5 rounded bg-white/10 text-white font-mono text-[10px] h-fit">norm</span><span><b>normal</b> — обычные прямые подходы. Отдых 90-120с. База.</span></div>
-          <div class="flex gap-2"><span class="px-1.5 py-0.5 rounded bg-pink/20 text-pink font-mono text-[10px] h-fit">drop</span><span><b>drop_set</b> — дошёл до отказа → сразу снизь вес на 20-30% и добей ещё 6-8 повторов без отдыха. Для пампа и добивки.</span></div>
-          <div class="flex gap-2"><span class="px-1.5 py-0.5 rounded bg-pink/20 text-pink font-mono text-[10px] h-fit">rest</span><span><b>rest_pause</b> — сделал до отказа → 15-20с пауза → ещё 2-3 повтора → ещё пауза. Для силы когда не хватает на полный подход.</span></div>
-          <div class="flex gap-2"><span class="px-1.5 py-0.5 rounded bg-pink/20 text-pink font-mono text-[10px] h-fit">pyr</span><span><b>pyramid</b> — наращиваешь вес каждый подход: 12×40кг →10×50кг →8×60кг. Последний тяжёлый.</span></div>
-          <div class="flex gap-2"><span class="px-1.5 py-0.5 rounded bg-purple/20 text-purple font-mono text-[10px] h-fit">sugg</span><span>Розовый бейдж <span class="px-1 rounded bg-pink/20 text-pink">drop/rest/pyramid</span> у упражнения — рекомендация из плана. Можешь оставить или поменять селектом.</span></div>
+    <div class="text-gray-500 text-xs mb-3">Логируй подходы, RIR подскажет вес на следующий сет</div>
+    <div class="glass p-4 mb-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="timer-ring !w-16 !h-16" id="timer-ring"><div class="text-lg font-black font-mono" id="timer-display">01:30</div></div>
+          <div>
+            <div class="text-xs text-gray-400 uppercase font-bold">Отдых</div>
+            <div class="text-[11px] text-gray-500">RIR≤1 → 180с · RIR≥2 → 120с · изоляция → 60–90с</div>
+          </div>
         </div>
-      </div>
-      <div class="pt-3 border-t border-white/5">
-        <div class="text-pink font-bold uppercase tracking-wider mb-2">Финишер HIIT — 4-10 мин в конце тренировки</div>
-        <div class="space-y-2 text-gray-300">
-          <div><b class="text-white">Табата 20/10×8</b> — 20с максимум →10с отдых, 8 раундов =4мин. Выбери берпи/байк/присед.</div>
-          <div><b class="text-white">30/30×10</b> — 30с работа /30с отдых, 10 раундов =10мин. Умеренно.</div>
-          <div><b class="text-white">Пирамида 15-45</b> — 15с →30с →45с →30с →15с работы, между ними 15с отдых. Волна нагрузки.</div>
-          <div><b class="text-white">EMOM 12м</b> — каждую минуту 40с работа /20с отдых, 12 минут. Держи темп.</div>
-          <div><b class="text-white">AMRAP 10м</b> — 10 мин без пауз, максимум кругов (5 отжиманий+10 приседов). Фиксируй результат.</div>
-          <div class="text-[11px] text-gray-500 bg-black/20 p-2 rounded">Нажми кнопку финишера → таймер на весь экран со звуком/вибрацией → Стоп вернёт в тренировку. Опционально, 1-2 раза в неделю.</div>
-        </div>
+        <button id="btn-timer-start" onclick="startRestTimer(90)" class="btn-ghost !px-4 !py-2 text-sm">Старт 90с</button>
       </div>
     </div>
-  </div>
-
-  <div class="mt-8">
-    <button onclick="finishWorkout()" class="btn-primary flex items-center justify-center gap-2" id="btn-finish"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Завершить</button>
+    <div class="glass p-3 mb-4 flex items-center gap-3">
+      <div class="w-12 h-12 rounded-full border-2 border-purple/30 flex items-center justify-center flex-shrink-0" id="metronome-circle"></div>
+      <div class="flex-1">
+        <div class="text-sm text-white font-bold">Темп 3-0-1-0</div>
+        <div class="text-xs text-gray-500" id="metronome-phase">3с вниз · 1с вверх</div>
+      </div>
+      <button onclick="startMetronome()" class="btn-ghost !px-3 !py-1.5 text-xs">Старт</button>
+      <button onclick="stopMetronome()" class="btn-ghost !px-3 !py-1.5 text-xs">Стоп</button>
+    </div>
+    <div id="progression-hint" class="glass p-3 mb-4 text-xs text-gray-400">
+      <div class="flex justify-between items-start"><span><b class="text-purple">Подсказка RIR:</b> RIR 3+ → +вес · RIR 1 → фиксируй · RIR 0/недобор → −вес 5–10%</span><button onclick="dismissProgressionHint()" class="text-gray-600">✕</button></div>
+    </div>
+    <div class="space-y-3" id="exercise-cards"></div>
+    <button onclick="finishWorkout()" id="btn-finish" class="btn-primary mt-4 flex items-center justify-center gap-2">Завершить тренировку</button>
   </div>
 </section>
 
-<!-- Finisher Timer -->
-<section id="finisher-screen" class="section pt-6 text-center">
-  <div class="flex justify-between items-center mb-6">
-    <button onclick="stopFinisher()" class="text-gray-400 text-sm">← Назад</button>
-    <span class="text-purple font-bold text-sm" id="finisher-mode-label">Финишер</span>
-    <span class="text-gray-500 text-xs" id="finisher-round">—</span>
-  </div>
-  <div class="flex justify-center mb-6">
-    <div id="finisher-ring" class="timer-ring"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" stroke-dasharray="289" stroke-dashoffset="0"/></svg><div class="text-4xl font-black font-mono text-white" id="finisher-display">00:00</div></div>
-  </div>
-  <div class="progress-bar mb-6"><div id="finisher-bar" style="width:0%"></div></div>
-  <div class="grid grid-cols-2 gap-3">
-    <button onclick="stopFinisher()" class="btn-ghost">Стоп</button>
-    <button onclick="startFinisher('tabata')" class="btn-primary">Рестарт</button>
-  </div>
-  <p class="text-gray-500 text-xs mt-4">Звук + вибрация на смену интервала</p>
-</section>
-
-<!-- ========== CARDIO RUNNER ========== -->
-<section id="cardio-runner" class="section pt-4" style="min-height:100dvh">
-  <div class="flex items-center justify-between mb-4">
-    <button onclick="cardioEarlyFinish()" class="text-gray-400 text-sm flex items-center gap-1">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg> Завершить
-    </button>
-    <span class="text-xs text-gray-500 font-mono" id="cr-total-elapsed">00:00</span>
-  </div>
-
-  <!-- Phase progress bar -->
-  <div class="cr-phase-bar mb-6">
-    <div class="cr-phase-seg" id="cr-seg-1"></div>
-    <div class="cr-phase-seg" id="cr-seg-2"></div>
-    <div class="cr-phase-seg" id="cr-seg-3"></div>
-  </div>
-
-  <!-- Phase label -->
-  <div class="text-center mb-2">
-    <div class="cr-round-badge mx-auto" id="cr-phase-label" style="background:rgba(139,92,246,.15);color:#A78BFA">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 6.75 6.75 0 009 18.75a6.768 6.768 0 006.362-13.536z"/></svg>
-      <span id="cr-phase-text">Фаза 1: LISS Вход</span>
-    </div>
-  </div>
-
-  <!-- Main timer -->
-  <div class="text-center my-6">
-    <div class="cr-timer grad-text" id="cr-main-timer">15:00</div>
-    <div class="cr-hint mt-2" id="cr-hint">Ходьба в гору: уклон 8–10%, скорость 4.8–5.2 км/ч</div>
-  </div>
-
-  <!-- EMOM station display (hidden in LISS phases) -->
-  <div id="cr-emom-panel" class="hidden glass p-5 mb-4 text-center">
-    <div class="text-gray-400 text-xs uppercase tracking-wider mb-2" id="cr-emom-round">Раунд 1 / 3</div>
-    <div class="cr-station text-white mb-3" id="cr-emom-station">МИНУТА 1: 18 Махов гирей</div>
-    <div class="cr-minute-timer grad-text" id="cr-emom-timer">01:00</div>
-    <div class="mt-3 flex justify-center gap-4">
-      <div class="text-xs text-gray-500">Станция <span class="text-white font-bold" id="cr-emom-station-num">1</span>/5</div>
-      <div class="text-xs text-gray-500">Минута <span class="text-white font-bold" id="cr-emom-minute-num">1</span>/15</div>
-    </div>
-  </div>
-
-  <!-- Pulse zone hint -->
-  <div class="glass p-3 mb-4 flex items-center gap-3" id="cr-pulse-hint">
-    <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style="background:rgba(239,68,68,.15)">
-      <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"/></svg>
-    </div>
-    <div>
-      <div class="text-white font-bold text-xs" id="cr-pulse-text">Целевой пульс: 120–135 уд/мин</div>
-      <div class="text-gray-500 text-[11px]">Не держись за поручни, держи осанку</div>
-    </div>
-  </div>
-
-  <!-- Controls -->
-  <div class="grid grid-cols-2 gap-3 mt-auto">
-    <button onclick="cardioTogglePause()" class="btn-ghost flex items-center justify-center gap-2 py-4" id="cr-btn-pause">
-      <svg class="w-5 h-5" id="cr-pause-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5"/></svg>
-      <span id="cr-pause-text">Пауза</span>
-    </button>
-    <button onclick="cardioEarlyFinish()" class="btn-ghost flex items-center justify-center gap-2 py-4" style="border-color:rgba(239,68,68,.3);color:#F87171">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 7.5A2.25 2.25 0 017.5 5.25h9a2.25 2.25 0 012.25 2.25v9a2.25 2.25 0 01-2.25 2.25h-9a2.25 2.25 0 01-2.25-2.25v-9z"/></svg>
-      Завершить досрочно
-    </button>
+<!-- ===== HIIT финишер ===== -->
+<section id="finisher-screen" class="section">
+  <div class="pt-5">
+    <div class="text-2xl font-black text-white mb-1" id="finisher-mode-label">Табата</div>
+    <div class="text-gray-500 text-sm mb-4" id="finisher-round">Раунд 1/8 — Работа</div>
+    <div class="timer-ring mx-auto mb-4" id="finisher-ring"><div class="text-3xl font-black font-mono" id="finisher-display">00:20</div></div>
+    <div class="progress-bar mb-6"><div id="finisher-bar" style="width:0%"></div></div>
+    <button onclick="stopFinisher()" class="btn-ghost w-full">Стоп и вернуться</button>
   </div>
 </section>
 
-<section id="workout-complete" class="section pt-10 text-center">
-  <div class="mx-auto w-20 h-20 rounded-3xl bg-gradient-to-br from-purple to-pink flex items-center justify-center mb-4"><svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
-  <h2 class="text-2xl font-black grad-text mb-2">Отличная работа!</h2>
-  <p class="text-gray-400 text-sm mb-6" id="complete-stats"></p>
-  <div id="progression-results" class="space-y-3 mb-8 text-left"></div>
-  <button onclick="shareWorkout()" id="btn-share" class="btn-ghost w-full mb-3 flex items-center justify-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.5 12.5 12 16l3.5-3.5M12 16V4M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg> Скопировать отчет для Telegram</button>
-  <button onclick="loadDashboard()" class="btn-primary">На главную</button>
+<!-- ===== Завершение ===== -->
+<section id="workout-complete" class="section">
+  <div class="pt-10 text-center">
+    <div class="text-5xl mb-3">🏆</div>
+    <div class="text-2xl font-black text-white mb-2">Отличная работа!</div>
+    <div class="text-gray-400 text-sm mb-6">Прогресс зафиксирован</div>
+    <div class="text-left mb-4" id="progression-results"></div>
+    <button onclick="shareWorkout()" id="btn-share" class="btn-primary flex items-center justify-center gap-2 mb-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/></svg> Отчёт в Telegram</button>
+    <button onclick="loadDashboard()" class="btn-ghost w-full">На дашборд</button>
+  </div>
 </section>
 
-<section id="loading-screen" class="section pt-20 flex-col items-center">
-  <div class="spinner mb-4"></div>
-  <p class="text-gray-400 text-sm">Загрузка...</p>
+<!-- ===== План подтягиваний ===== -->
+<section id="pullup-plan" class="section">
+  <div class="pt-5">
+    <div class="text-2xl font-black text-white mb-1">Подтягивания с нуля</div>
+    <div class="text-gray-500 text-sm mb-4">5 этапов до первого подтягивания</div>
+    <div class="glass p-4 mb-4" id="pullup-progress"></div>
+    <div class="space-y-3" id="pullup-stages"></div>
+  </div>
+</section>
+
+<!-- ===== Жим-календарь ===== -->
+<section id="bench-calendar" class="section">
+  <div class="pt-5">
+    <div class="text-2xl font-black text-white mb-1">Жим-календарь</div>
+    <div class="text-gray-500 text-sm mb-4">Пн — тяжёлый · Чт — скоростной · путь к 85–90 кг</div>
+    <div id="bench-body"></div>
+  </div>
 </section>
 
 </main>
+
+<!-- ===== Модалка жима ===== -->
+<div id="bench-modal">
+  <div class="bm-box glass p-5 grad-border">
+    <div class="flex justify-between items-start mb-3">
+      <div class="text-white font-bold" id="bm-title">День</div>
+      <button onclick="bcCloseModal()" class="text-gray-500">✕</button>
+    </div>
+    <div class="text-xs text-gray-500 mb-4">План: <b id="bm-planned" class="text-white"></b></div>
+    <div class="grid grid-cols-3 gap-2 mb-3">
+      <div><label class="text-[10px] text-gray-500 uppercase">Вес, кг</label><input type="number" step="2.5" id="bm-weight" class="input-dark text-center"></div>
+      <div><label class="text-[10px] text-gray-500 uppercase">Повт.</label><input type="number" id="bm-reps" class="input-dark text-center"></div>
+      <div><label class="text-[10px] text-gray-500 uppercase">Сеты</label><input type="number" id="bm-sets" class="input-dark text-center"></div>
+    </div>
+    <div id="bm-amrap-row" class="mb-3 hidden" style="display:none">
+      <label class="text-[10px] text-yellow-400 uppercase font-bold">AMRAP — сколько повторений в последнем сете?</label>
+      <input type="number" id="bm-amrap-reps" class="input-dark text-center mt-1" placeholder=">=3 → база +5 кг">
+    </div>
+    <div id="bm-result" class="mb-3"></div>
+    <button onclick="bcSave()" id="bm-save" class="btn-primary">Сохранить</button>
+  </div>
+</div>
+
+<!-- ===== Кардио-раннер (fullscreen) ===== -->
+<section id="cardio-runner" class="section">
+  <div class="min-h-[100dvh] flex flex-col px-4 py-3" style="background:radial-gradient(1200px 600px at 50% -10%,rgba(245,158,11,.08),transparent),#121212">
+    <div class="flex items-center justify-between mb-2">
+      <div class="font-black grad-text text-lg" id="cr-title">Гибридное Кардио</div>
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-gray-500 font-mono" id="cr-total-elapsed">00:00 / 45:00</span>
+        <button onclick="showSection('dashboard'); if(cr.timer){clearInterval(cr.timer); cr.timer=null;} cr.running=false;" class="w-8 h-8 rounded-lg bg-white/5 text-gray-400">✕</button>
+      </div>
+    </div>
+    <div class="cr-phase-bar mb-4" id="cr-phase-bar"></div>
+    <div class="flex-1 flex flex-col" id="cr-body"></div>
+  </div>
+</section>
+
+<script src="/js/app.js"></script>
+<script src="/js/workout.js"></script>
+<script src="/js/timer.js"></script>
+<script src="/js/gym_tools.js"></script>
+<script src="/js/cardio_runner.js"></script>
+<script src="/js/bench_calendar.js"></script>
 <script>
-const S = {
-  userId: null, user: null, planData: null,
-  selectedDay: null, dayExercises: [], workoutSets: {}, lastWeights: {}
-};
-
-async function api(path, opts={}) {
-  const r = await fetch(path, { headers: {'Content-Type':'application/json'}, ...opts });
-  if (!r.ok) {
-    let detail = '';
-    try { const j = await r.json(); let d = j.detail || j.message || j; detail = (typeof d === 'string') ? d : JSON.stringify(d); } catch {}
-    try { if(!detail) detail = await r.text(); } catch {}
-    throw new Error('API ' + r.status + (detail ? ': ' + detail : ''));
-  }
-  return r.json();
-}
-
-function showSection(id) {
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  const el = document.getElementById(id);
-  if (el) el.classList.add('active');
-  const header = document.getElementById('app-header');
-  if (header) header.classList.toggle('hidden', id === 'profile-select');
-}
-
-const LEGACY_MAP = { '1': '11111111-1111-1111-1111-111111111111', '2': '22222222-2222-2222-2222-222222222222' };
-function normalizeUid(uid){ uid = String(uid); return LEGACY_MAP[uid] || uid; }
-async function selectProfile(uid) {
-  uid = normalizeUid(uid);
-  S.userId = uid; localStorage.setItem('ag_uid', uid);
-  showSection('loading-screen');
-  try {
-    S.user = await api('/api/user/' + uid);
-    S.lastWeights = await api('/api/last_weights/' + uid);
-    await loadDashboard();
-  } catch(e) { alert('Ошибка: ' + e.message); showSection('profile-select'); }
-}
-
-function logout() { localStorage.removeItem('ag_uid'); showSection('profile-select'); }
-
-async function loadDashboard() {
-  const dashName = document.getElementById('dash-name');
-  const headerUser = document.getElementById('header-user');
-  const pullupGuide = document.getElementById('pullup-guide');
-  const dashPlanName = document.getElementById('dash-plan-name');
-  const dashPlanDesc = document.getElementById('dash-plan-desc');
-  
-  if (dashName) dashName.textContent = S.user.name;
-  if (headerUser) headerUser.textContent = S.user.name;
-  if (pullupGuide) pullupGuide.classList.toggle('hidden', String(S.user.id) !== '11111111-1111-1111-1111-111111111111' && String(S.user.id) !== '1');
-
-  S.planData = await api('/api/plan/' + S.user.current_plan_id);
-  if (dashPlanName) dashPlanName.textContent = S.planData.plan.name;
-  if (dashPlanDesc) dashPlanDesc.textContent = S.planData.plan.description;
-  
-  try { S.workoutLogs = await api('/api/logs/' + S.userId); } catch(e){ S.workoutLogs = []; console.warn('logs failed', e); }
-  
-  renderCalendar();
-  renderDayButtons();
-  showSection('dashboard');
-}
-
-// Calendar state
-let calWeekStart = null; // Monday of current viewed week
-
-function getWeekStart(date) {
-  const d = new Date(date);
-  const day = d.getDay(); // 0=Sun, 1=Mon...
-  const diff = (day === 0 ? -6 : 1) - day; // Monday as start
-  d.setDate(d.getDate() + diff);
-  d.setHours(0,0,0,0);
-  return d;
-}
-
-function shiftWeek(delta) {
-  if (!calWeekStart) calWeekStart = getWeekStart(new Date());
-  calWeekStart.setDate(calWeekStart.getDate() + delta * 7);
-  renderCalendar();
-}
-
-function renderCalendar() {
-  const bar = document.getElementById('calendar-bar');
-  bar.innerHTML = '';
-  const days = ['ПН','ВТ','СР','ЧТ','ПТ','СБ','ВС'];
-  const today = new Date();
-  today.setHours(0,0,0,0);
-  const schedule = S.user.schedule || [];
-  const logs = S.workoutLogs || [];
-  
-  if (!calWeekStart) calWeekStart = getWeekStart(today);
-  
-  // Update month label
-  const monthNames = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
-  const monthLabel = document.getElementById('cal-month-label');
-  if (monthLabel) monthLabel.textContent = 
-    monthNames[calWeekStart.getMonth()] + ' ' + calWeekStart.getFullYear();
-  
-  // Helper: check if there's a log for a specific date
-  const hasLogForDate = (date) => {
-    const dateStr = date.toISOString().split('T')[0];
-    return logs.some(log => log.date.startsWith(dateStr));
-  };
-  
-  // Show 7 days: Mon-Sun of current week
-  for(let i = 0; i < 7; i++) {
-    let d = new Date(calWeekStart);
-    d.setDate(calWeekStart.getDate() + i);
-    let dow = d.getDay(); // 0=Sun, 1=Mon...
-    // Convert to schedule index: Mon=1...Sun=0
-    let schedDow = dow === 0 ? 0 : dow;
-    
-    let isToday = d.getTime() === today.getTime();
-    let isScheduled = schedule.includes(schedDow);
-    let hasLog = hasLogForDate(d);
-    let isPast = d < today;
-    let isFuture = d > today;
-    
-    let cls = 'cal-day ';
-    if (isToday) cls += 'today ';
-    if (hasLog) cls += 'completed ';
-    else if (isScheduled && isPast) cls += 'missed ';
-    else if (isScheduled) cls += 'scheduled ';
-    
-    // Clickable day - opens that day's workout
-    let clickHandler = `onclick="openDayFromCalendar(${i})"`;
-    
-    bar.innerHTML += `
-      <div class="${cls}" ${clickHandler} style="cursor:pointer">
-        <div class="day-name">${days[i]}</div>
-        <div class="day-num">${d.getDate()}</div>
-      </div>
-    `;
-  }
-  
-  if (document.querySelector('.cal-day.missed')) {
-    document.getElementById('missed-warning').classList.remove('hidden');
-  } else {
-    document.getElementById('missed-warning').classList.add('hidden');
-  }
-}
-
-function openDayFromCalendar(dayOffset) {
-  if (!calWeekStart) return;
-  const d = new Date(calWeekStart);
-  d.setDate(calWeekStart.getDate() + dayOffset);
-  const today = new Date();
-  today.setHours(0,0,0,0);
-  
-  // Can't start workout in future
-  if (d > today) {
-    alert('Нельзя начать тренировку в будущем');
-    return;
-  }
-  
-  // Find which program day this calendar day corresponds to
-  const dow = d.getDay(); // 0=Sun...
-  const schedDow = dow === 0 ? 0 : dow;
-  const schedule = S.user.schedule || [];
-  
-  if (!schedule.includes(schedDow)) {
-    alert('В этот день тренировка не запланирована');
-    return;
-  }
-  
-  // Map schedule day to program day_number
-  const scheduleIndex = schedule.indexOf(schedDow);
-  const programDays = Array.from(new Set(S.planData.exercises.map(e => e.day_number))).sort((a,b)=>a-b);
-  const dayNumber = programDays[scheduleIndex % programDays.length];
-  
-  initReadiness(dayNumber);
-}
-
-async function saveSchedule() {
-  let selected = Array.from(document.querySelectorAll('.sched-cb:checked')).map(cb => parseInt(cb.value));
-  if (selected.length > 4) return alert('Максимум 4 дня в неделю!');
-  
-  const btn = document.getElementById('btn-save-sched');
-  if (btn) btn.textContent = 'Сохранение...';
-  try {
-    await api('/api/user/' + S.userId + '/schedule', { method: 'PATCH', body: JSON.stringify({ schedule: selected }) });
-    S.user.schedule = selected;
-    loadDashboard();
-  } catch(e) { alert('Ошибка: ' + e.message); }
-}
-
-// Plan Selection
-async function loadPlans() {
-  const plans = await api('/api/plans');
-  const cont = document.getElementById('plan-list');
-  if (!cont) return;
-  cont.innerHTML = '';
-  
-  plans.forEach(plan => {
-    const isCurrent = S.user.current_plan_id === plan.id;
-    const btn = document.createElement('button');
-    btn.className = `glass p-5 card-hover ${isCurrent ? 'border-l-4 border-purple opacity-100' : 'opacity-70'}`;
-    btn.innerHTML = `
-      <div class="flex items-start justify-between">
-        <div>
-          <div class="text-white font-bold text-lg">${plan.name}</div>
-          <div class="text-gray-400 text-sm mt-1">${plan.description}</div>
-          <div class="text-xs text-gray-500 mt-2">${(plan.tags || []).map(t => `<span class="px-2 py-0.5 bg-purple/20 rounded text-purple mr-1">${t}</span>`).join('')}</div>
-        </div>
-        ${isCurrent ? '<span class="text-green-400 text-2xl">✓</span>' : ''}
-      </div>
-    `;
-    if (!isCurrent) {
-      btn.onclick = () => selectPlan(plan.id);
-    }
-    cont.appendChild(btn);
-  });
-}
-
-async function selectPlan(planId) {
-  try {
-    await api('/api/user/' + S.userId + '/plan', { method: 'PATCH', body: JSON.stringify({ plan_id: planId }) });
-    S.user.current_plan_id = planId;
-    loadDashboard();
-  } catch(e) { alert('Ошибка: ' + e.message); }
-}
-
-function dayLabelText(d) {
-  const isFullBodyAB = S.planData?.plan?.split_type === 'full_body';
-  if (isFullBodyAB) return 'День ' + (d === 1 ? 'А' : d === 2 ? 'Б' : d);
-  return 'День ' + d;
-}
-
-function renderDayButtons() {
-  const cont = document.getElementById('day-buttons');
-  if (!cont) return;
-  cont.innerHTML = '';
-  const days = new Set(S.planData.exercises.map(e => e.day_number));
-  
-  days.forEach(d => {
-    // Check if this day is a cardio day (has cardio/conditioning exercises)
-    const dayExercises = S.planData.exercises.filter(e => e.day_number === d);
-    const isCardioDay = dayExercises.some(e => e.exercises && ['cardio','conditioning'].includes(e.exercises.movement_pattern));
-    
-    let btn = document.createElement('button');
-    if (isCardioDay) {
-      btn.className = 'glass p-4 text-left card-hover col-span-2';
-      btn.style.borderLeft = '4px solid #F59E0B';
-      btn.innerHTML = `
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background:linear-gradient(135deg,rgba(245,158,11,.2),rgba(239,68,68,.2))">
-            <svg class="w-5 h-5" style="color:#F59E0B" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 6.75 6.75 0 009 18.75a6.768 6.768 0 006.362-13.536z"/></svg>
-          </div>
-          <div class="flex-1">
-            <div class="font-bold uppercase text-xs mb-0.5" style="color:#F59E0B">⚡ Кардио-день</div>
-            <div class="text-white font-bold text-sm">Жиросжигание & Выносливость</div>
-            <div class="text-gray-500 text-[11px] mt-0.5">LISS 15м → EMOM MetCon 15м → Заминка 15м • ~45 мин</div>
-          </div>
-        </div>`;
-      btn.onclick = () => launchCardioRunner();
-    } else {
-      btn.className = 'glass p-4 text-left card-hover';
-      btn.innerHTML = `<div class="text-purple font-bold uppercase text-xs mb-1">${dayLabelText(d)}</div><div class="text-white font-bold">Начать</div>`;
-      btn.onclick = () => initReadiness(d);
-    }
-    cont.appendChild(btn);
-  });
-}
-
-// --- Readiness flow (ТЗ) ---
-function initReadiness(day) {
-  S.selectedDay = day;
-  S.dayExercises = S.planData.exercises.filter(e => e.day_number === day);
-  // reset form
-  document.querySelectorAll('.sore-cb').forEach(cb => cb.checked = false);
-  document.querySelectorAll('.muscle-chip').forEach(b=>b.classList.remove('active'));
-  const pain = document.getElementById('pain-level'); if(pain) pain.value = 1;
-  updatePain(1);
-  const res = document.getElementById('readiness-result'); if(res){ res.classList.add('hidden'); res.innerHTML=''; }
-  const btn = document.getElementById('btn-check-readiness'); if(btn) btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 110-16 8 8 0 010 16z"/></svg> Проверить';
-  showSection('readiness-form');
-}
-
-async function checkReadiness() {
-  const sore = Array.from(document.querySelectorAll('.sore-cb:checked')).map(cb=>cb.value);
-  const painEl = document.getElementById('pain-level');
-  const pain = painEl ? parseInt(painEl.value) : 1;
-  const btn = document.getElementById('btn-check-readiness');
-  const resDiv = document.getElementById('readiness-result');
-  if(btn) btn.innerHTML = '<span class="spinner w-4 h-4 border-2"></span> AI думает...';
-  try {
-    const data = await api('/api/check_readiness', {
-      method: 'POST',
-      body: JSON.stringify({ user_id: S.userId, plan_id: S.user.current_plan_id, day_number: S.selectedDay, sore_muscles: sore, pain_level: pain })
-    });
-    if(resDiv){
-      resDiv.classList.remove('hidden');
-      if(data.status === 'ok'){
-        resDiv.innerHTML = `<div class="text-green-400 font-bold flex items-center gap-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> ${data.message}</div><button onclick="initWarmup(S.selectedDay)" class="btn-primary mt-3 w-full">К разминке</button>`;
-      } else if(data.status === 'modified'){
-        S._pendingSubs = data.substitutions || [];
-        // подгрузим названия для красивого отображения
-        let exMap = {};
-        try { const all = await api('/api/exercises'); exMap = Object.fromEntries(all.map(e=>[e.id, e.name])); } catch {}
-        let subs = (S._pendingSubs||[]).map(s=>{
-          const orig = S.dayExercises.find(e=>e.exercise_id===s.original_exercise_id)?.exercises.name || s.original_exercise_id;
-          const replName = exMap[s.replacement_exercise_id] || ('ID '+s.replacement_exercise_id);
-          return `<div class="glass p-2 mb-2 text-sm"><span class="text-red-400 line-through">${orig}</span> → <span class="text-green-400">${replName}</span><div class="text-gray-500 text-xs">${s.reason}</div></div>`;
-        }).join('');
-        resDiv.innerHTML = `
-          <div class="text-yellow-400 font-bold mb-2 flex items-center gap-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z"/></svg> Найдены замены (pain ${pain}/10)</div>
-          ${subs || '<div class="text-gray-400 text-sm">Нет замен, но совет: '+(data.general_advice||'')+'</div>'}
-          ${data.general_advice?`<div class="text-gray-300 text-sm mt-2 flex gap-2"><svg class="w-4 h-4 text-yellow-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.94 12.94 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"/></svg> ${data.general_advice}</div>`:''}
-          <div class="grid grid-cols-2 gap-2 mt-3">
-            <button onclick="applySubstitutions()" class="btn-primary text-sm">Применить замены</button>
-            <button onclick="initWarmup(S.selectedDay, true)" class="btn-ghost text-sm">Игнорировать</button>
-          </div>
-        `;
-      } else {
-        resDiv.innerHTML = `<div class="text-red-400">${data.message||'AI недоступен'}</div><button onclick="initWarmup(S.selectedDay)" class="btn-primary mt-3 w-full">К разминке →</button>`;
-      }
-    }
-  } catch(e){
-    alert('Ошибка: '+e.message);
-    if(resDiv){ resDiv.classList.remove('hidden'); resDiv.innerHTML = `<div class="text-red-400">Ошибка: ${e.message}</div><button onclick="initWarmup(S.selectedDay)" class="btn-ghost w-full mt-2">К разминке →</button>`; }
-  }
-  if(btn) btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 110-16 8 8 0 010 16z"/></svg> Проверить';
-}
-function toggleMuscle(btn){
-  btn.classList.toggle('active');
-  const cb = btn.querySelector('.sore-cb');
-  if(cb) cb.checked = btn.classList.contains('active');
-}
-function updatePain(val){
-  const pv = document.getElementById('pain-value');
-  if(pv){
-    pv.textContent = val + ' / 10';
-    // радужный цвет
-    const v = parseInt(val);
-    let col = '#22C55E';
-    if(v>=7) col = '#EF4444';
-    else if(v>=4) col = v>=6 ? '#F97316' : '#EAB308';
-    pv.style.color = col;
-  }
-}
-function skipReadiness(){ S._pendingSubs = []; initWarmup(S.selectedDay, true); }
-async function applySubstitutions(subs){
-  subs = subs || S._pendingSubs || [];
-  if(!subs || !subs.length) return initWarmup(S.selectedDay, true);
-  try{
-    const all = await api('/api/exercises');
-    const map = Object.fromEntries(all.map(e=>[e.id,e]));
-    subs.forEach(s=>{
-      const idx = S.dayExercises.findIndex(e=>e.exercise_id===s.original_exercise_id);
-      if(idx!==-1 && map[s.replacement_exercise_id]){
-        S.dayExercises[idx] = { ...S.dayExercises[idx], exercise_id: s.replacement_exercise_id, exercises: map[s.replacement_exercise_id] };
-      }
-    });
-  }catch(e){ console.warn('apply failed', e); }
-  // не сбрасываем S.dayExercises через initWarmup, сразу показываем разминку с заменами
-  showWarmupScreen();
-}
-
-function initWarmup(day, ignoreSubs=false) {
-  S.selectedDay = day;
-  if(ignoreSubs) S._pendingSubs = [];
-  // если есть pending замены и не ignore — не перезаписываем уже модифицированный S.dayExercises
-  // но если вызов из renderDayButtons/readiness — нужно взять свежий список
-  const needsFresh = !S.dayExercises || S.dayExercises.length===0 || S.dayExercises[0].day_number !== day || ignoreSubs;
-  if(needsFresh){
-    S.dayExercises = S.planData.exercises.filter(e => e.day_number === day);
-  }
-  // если остались pending (нажали Игнорировать уже очистили), ничего не делаем
-  showWarmupScreen();
-}
-function showWarmupScreen(){
-  const exList = S.dayExercises;
-  
-  let isLower = exList.some(e => ['quads','hamstrings','glutes'].includes(e.exercises.target_muscle));
-  let isUpper = exList.some(e => ['chest','back','shoulders','biceps','triceps'].includes(e.exercises.target_muscle));
-  
-  let html = '';
-  if (isUpper) {
-    html += `<div class="glass p-3 flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-purple/15 flex items-center justify-center flex-shrink-0"><svg class="w-5 h-5 text-purple" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 8l4 4-4 4M8 8l-4 4 4 4M12 3v18"/></svg></div><div><div class="text-white font-bold text-sm">Вращения плечами и руками</div><div class="text-gray-400 text-xs">Вперед/назад по 15 раз</div></div></div>`;
-    html += `<div class="glass p-3 flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-pink/15 flex items-center justify-center flex-shrink-0"><svg class="w-5 h-5 text-pink" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12h12M6 12a6 6 0 016-6M18 12a6 6 0 01-6 6"/></svg></div><div><div class="text-white font-bold text-sm">Отжимания от пола/скамьи</div><div class="text-gray-400 text-xs">1 подход х 10-15 легко</div></div></div>`;
-  }
-  if (isLower) {
-    html += `<div class="glass p-3 flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-purple/15 flex items-center justify-center flex-shrink-0"><svg class="w-5 h-5 text-purple" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 12h12"/></svg></div><div><div class="text-white font-bold text-sm">Махи ногами</div><div class="text-gray-400 text-xs">Вперед-назад и в стороны по 10 раз</div></div></div>`;
-    html += `<div class="glass p-3 flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-pink/15 flex items-center justify-center flex-shrink-0"><svg class="w-5 h-5 text-pink" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg></div><div><div class="text-white font-bold text-sm">Воздушные приседания</div><div class="text-gray-400 text-xs">1 подход х 15 раз</div></div></div>`;
-  }
-  
-  const warmupList = document.getElementById('warmup-list');
-  const warmupTitle = document.getElementById('warmup-title');
-  if (warmupList) warmupList.innerHTML = html;
-  if (warmupTitle) warmupTitle.textContent = (isLower && isUpper) ? 'Фулбади разминка' : (isLower ? 'Разминка Низа' : 'Разминка Верха');
-  
-  showSection('warmup-screen');
-}
-
-function startWorkout() {
-  try{
-    S.workoutSets = {};
-    S.dayExercises.forEach(ex => {
-      let arr = [];
-      let last = S.lastWeights[String(ex.exercise_id)] || S.lastWeights[ex.exercise_id];
-      let defaultW = last ? last.weight : 0;
-      if (last && last.weight > 0 && last.rir >= 1) {
-        let repStr = ex.target_reps || ex.reps_target || '8-12';
-        let tr = parseInt(String(repStr).split('-')[1] || repStr);
-        if (last.reps >= tr) defaultW = parseFloat((parseFloat(last.weight) + 2.5).toFixed(2));
-      }
-      const sets = ex.target_sets || ex.sets || 3;
-      for(let i=0; i<sets; i++) arr.push({ weight: defaultW, reps: 0, rir: 2, done: false });
-      S.workoutSets[ex.exercise_id] = arr;
-    });
-    const dayLabel = document.getElementById('workout-day-label');
-    if (dayLabel) dayLabel.textContent = dayLabelText(S.selectedDay);
-    renderWorkoutBadge();
-    renderExerciseCards();
-    resetTimer();
-    showSection('active-workout');
-  }catch(e){ alert('Ошибка startWorkout: '+ e.message); console.error(e); }
-}
-
-// --- Rest Timer (ТЗ) ---
-let timerInterval = null;
-let timerRemaining = 90;
-function formatTimer(s){ const m=Math.floor(s/60).toString().padStart(2,'0'); const sec=(s%60).toString().padStart(2,'0'); return `${m}:${sec}`; }
-function updateTimerDisplay(){ const el=document.getElementById('timer-display'); if(el) el.textContent = formatTimer(timerRemaining); }
-function startRestTimer(seconds){
-  if(seconds) timerRemaining = seconds;
-  if(timerInterval) clearInterval(timerInterval);
-  updateTimerDisplay();
-  const btn=document.getElementById('btn-timer-start');
-  const ring=document.getElementById('timer-ring');
-  if(ring) ring.classList.add('active');
-  timerInterval=setInterval(()=>{
-    timerRemaining--;
-    updateTimerDisplay();
-    if(timerRemaining<=0){
-      clearInterval(timerInterval); timerInterval=null;
-      if(btn) btn.textContent = 'Готово! 🔔';
-      if(ring) ring.classList.remove('active');
-      try{ navigator.vibrate && navigator.vibrate([200,100,200]); }catch{}
-      try{ const ctx=new (window.AudioContext||window.webkitAudioContext)(); const o=ctx.createOscillator(); o.frequency.value=880; o.connect(ctx.destination); o.start(); setTimeout(()=>o.stop(),400);}catch{}
-      setTimeout(()=>{ if(btn) btn.textContent='Старт 90с'; resetTimer(); },3000);
-    }
-  },1000);
-  if(btn){ btn.textContent='Пауза'; btn.onclick = ()=>{ if(timerInterval){ clearInterval(timerInterval); timerInterval=null; btn.textContent='Продолжить'; if(ring) ring.classList.remove('active'); btn.onclick=()=>startRestTimer(); } else { startRestTimer(); } }; }
-}
-function resetTimer(){ if(timerInterval){ clearInterval(timerInterval); timerInterval=null; } timerRemaining=90; updateTimerDisplay(); const btn=document.getElementById('btn-timer-start'); const ring=document.getElementById('timer-ring'); if(ring) ring.classList.remove('active'); if(btn){ btn.textContent='Старт 90с'; btn.onclick=()=>startRestTimer(90); } }
-
-// Finisher HIIT - injected from timer.js
-let finisherInterval=null; let finisherState={mode:null, round:0, total:0, isWork:true, remaining:0};
-const FINISHER_PRESETS={ tabata:{label:'Табата', work:20, rest:10, rounds:8, total:160}, '30-30':{label:'30/30', work:30, rest:30, rounds:10, total:600}, pyramid:{label:'Пирамида', seq:[15,30,45,30,15], rest:15}, emom:{label:'EMOM', work:40, rest:20, rounds:12, total:720}, amrap:{label:'AMRAP', work:600, rest:0, rounds:1} };
-function startFinisher(mode){ const preset=FINISHER_PRESETS[mode]; if(!preset) return; finisherState={mode, round:1, isWork:true, remaining: preset.seq?preset.seq[0]:preset.work, total:preset.rounds*2}; if(mode==='pyramid'){ finisherState.seq=preset.seq; finisherState.seqIdx=0; finisherState.total=preset.seq.length*2-1; } if(mode==='amrap'){ finisherState.remaining=preset.work; } const lbl=document.getElementById('finisher-mode-label'); if(lbl) lbl.textContent=preset.label; showSection('finisher-screen'); runFinisherTick(); }
-function runFinisherTick(){ if(finisherInterval) clearInterval(finisherInterval); const display=document.getElementById('finisher-display'); const roundEl=document.getElementById('finisher-round'); const bar=document.getElementById('finisher-bar'); const ring=document.getElementById('finisher-ring'); const preset=FINISHER_PRESETS[finisherState.mode]; finisherInterval=setInterval(()=>{ finisherState.remaining--; if(display) display.textContent=formatTimer(finisherState.remaining); if(roundEl) roundEl.textContent=`Раунд ${finisherState.round}/${preset.rounds||preset.seq?.length||1} — ${finisherState.isWork?'Работа':'Отдых'}`; if(finisherState.remaining<=0){ try{ const ctx=new (window.AudioContext||window.webkitAudioContext)(); const o=ctx.createOscillator(); o.frequency.value=finisherState.isWork?660:440; o.connect(ctx.destination); o.start(); setTimeout(()=>o.stop(),200);}catch{} try{ navigator.vibrate&&navigator.vibrate(120);}catch{} if(finisherState.mode==='tabata' || finisherState.mode==='30-30' || finisherState.mode==='emom'){ if(!finisherState.isWork){ finisherState.round++; if(finisherState.round>preset.rounds){ clearInterval(finisherInterval); finisherState.mode=null; if(display) display.textContent='Готово!'; setTimeout(()=>showSection('workout-complete'),1500); return; } } finisherState.isWork=!finisherState.isWork; finisherState.remaining=finisherState.isWork?preset.work:preset.rest; } else if(finisherState.mode==='pyramid'){ let nextIsWork=!finisherState.isWork; let nextRemaining; if(nextIsWork){ finisherState.seqIdx++; if(finisherState.seqIdx>=preset.seq.length){ clearInterval(finisherInterval); if(display) display.textContent='Готово!'; setTimeout(()=>showSection('workout-complete'),1500); return; } nextRemaining=preset.seq[finisherState.seqIdx]; } else nextRemaining=preset.rest; finisherState.isWork=nextIsWork; finisherState.remaining=nextRemaining; } else if(finisherState.mode==='amrap'){ clearInterval(finisherInterval); if(display) display.textContent='Время!'; setTimeout(()=>showSection('workout-complete'),1500); return; } if(ring) ring.classList.toggle('active', finisherState.isWork); } },1000); }
-function stopFinisher(){ if(finisherInterval){ clearInterval(finisherInterval); finisherInterval=null; } showSection('active-workout'); }
-function toggleCheatSheet(){ const s=document.getElementById('cheat-sheet'); const i=document.getElementById('cheat-icon'); if(!s) return; s.classList.toggle('hidden'); if(i) i.textContent=s.classList.contains('hidden')?'▼':'▲'; }
-const BAR_WEIGHT=20; const PLATE_COLORS={25:'#DC2626',20:'#2563EB',15:'#EAB308',10:'#16A34A',5:'#FFFFFF',2.5:'#1F2937',1.25:'#EC4899'}; const PLATE_ORDER=[25,20,15,10,5,2.5,1.25];
-function plateBreakdown(total){ if(total<=BAR_WEIGHT) return []; let perSide=(total-BAR_WEIGHT)/2, out=[]; for(let p of PLATE_ORDER){ while(perSide>=p-0.001){ out.push(p); perSide=Math.round((perSide-p)*100)/100; } } return out; }
-function renderPlates(totalWeight, containerId){ const cont=document.getElementById(containerId); if(!cont) return; const plates=plateBreakdown(totalWeight); if(!plates.length){ cont.innerHTML=`<span class="text-[10px] text-gray-500">Гриф 20кг</span>`; return; } cont.innerHTML=plates.map(p=> `<span class="inline-flex items-center justify-center w-6 h-8 rounded text-[9px] font-bold border" style="background:${PLATE_COLORS[p]};color:${p===5?'#000':'#fff'};border-color:#000">${p}</span>`).join('<span class="mx-0.5 text-gray-600">|</span>')+`<span class="ml-1 text-[10px] text-gray-400">×2</span>`; }
-let metroCtx=null, metroInterval=null;
-function startMetronome(tempo="3-0-1-0"){ stopMetronome(); const parts=tempo.split('-').map(Number); const phases=['Эксцентрика','Пауза','Концентрика','Пауза']; let phaseIdx=0, tick=0; const circle=document.getElementById('metronome-circle'); try{ metroCtx=new (window.AudioContext||window.webkitAudioContext)(); }catch{} metroInterval=setInterval(()=>{ tick++; if(circle){ circle.classList.add('active'); setTimeout(()=>circle.classList.remove('active'),180); const l=document.getElementById('metronome-phase'); if(l) l.textContent=phases[phaseIdx]+` ${tick}/${parts[phaseIdx]||1}`; } if(tick>= (parts[phaseIdx]||1)){ tick=0; phaseIdx=(phaseIdx+1)%parts.length; try{ const o=metroCtx.createOscillator(); o.frequency.value=phaseIdx===2?880:440; o.connect(metroCtx.destination); o.start(); setTimeout(()=>o.stop(),70);}catch{} } }, 1000); }
-function stopMetronome(){ if(metroInterval){ clearInterval(metroInterval); metroInterval=null; } if(metroCtx){ try{ metroCtx.close(); }catch{} metroCtx=null; } const c=document.getElementById('metronome-circle'); if(c) c.classList.remove('active'); }
-function buildShareText(){ const tonnage=Object.values(S.workoutSets||{}).flat().filter(s=>s.done).reduce((a,s)=>a+(s.weight*s.reps),0); const prLines=(S._newPRs||[]).map(p=>`🏆 Рекорд e1RM ${p.name}: ${p.e1rm}кг`).join('\n'); return [`🏋️ Antigravity — ${new Date().toLocaleDateString('ru-RU')}`,`👤 ${S.user?.name||''} • ${S.planData?.plan?.name||''} День ${S.selectedDay||''}`,`Тоннаж: ${tonnage.toFixed(1)} кг`,prLines,`Подходов: ${Object.values(S.workoutSets||{}).flat().filter(s=>s.done).length}`,`Antigravity 💜`].filter(Boolean).join('\n'); }
-async function shareWorkout(){ const t=buildShareText(); try{ await navigator.clipboard.writeText(t); const b=document.getElementById('btn-share'); if(b){ const o=b.innerHTML; b.textContent='Скопировано!'; setTimeout(()=>b.innerHTML=o,1500);} }catch{ prompt('Скопируй отчет:', t); } }
-
-function renderWorkoutBadge() {
-  const badge = document.getElementById('workout-badge');
-  if (!badge) return;
-  
-  // Calculate week number since program start (fallback to 30 days ago if no created_at)
-  const startDate = new Date(S.user.created_at || (Date.now() - 30*24*60*60*1000));
-  const today = new Date();
-  const diffWeeks = Math.floor((today - startDate) / (7 * 24 * 60 * 60 * 1000)) + 1;
-  const weekNum = Math.max(1, diffWeeks);
-  
-  // Determine day type from exercises
-  const muscles = S.dayExercises.map(e => e.exercises.target_muscle);
-  const isLower = muscles.some(m => ['quads','hamstrings','glutes'].includes(m));
-  const isUpper = muscles.some(m => ['chest','back','shoulders','biceps','triceps'].includes(m));
-  let dayType = isLower && isUpper ? 'FULL BODY' : (isLower ? 'LOWER' : 'UPPER');
-  
-  badge.innerHTML = `
-    <span class="glass px-3 py-1 text-xs font-bold text-purple">Неделя ${weekNum}</span>
-    <span class="glass px-3 py-1 text-xs font-bold text-pink">${dayType}</span>
-    <span class="glass px-3 py-1 text-xs text-gray-400">${dayLabelText(S.selectedDay)}</span>
-  `;
-}
-
-function renderExerciseCards() {
-  const cont = document.getElementById('exercise-cards');
-  if (!cont) return;
-  cont.innerHTML = '';
-  S.dayExercises.forEach(ex => {
-    let e = ex.exercises;
-    const last = S.lastWeights[String(ex.exercise_id)] || S.lastWeights[ex.exercise_id];
-    const repStr = ex.target_reps || ex.reps_target || '8-12';
-    const tr = parseInt(String(repStr).split('-')[1] || repStr);
-    let lastHint = '';
-    if(last){
-      const willProgress = last.rir >= 1 && last.reps >= tr && last.weight > 0;
-      const suggested = willProgress ? (parseFloat(last.weight) + 2.5).toFixed(1) : last.weight;
-      lastHint = `<div class="text-[11px] mb-2 px-2 py-1 rounded bg-black/20 flex items-center gap-2">
-        <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m15 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        <span class="text-gray-400">Прошлый раз:</span> <span class="text-white font-mono font-bold">${last.weight}кг ×${last.reps} RIR${last.rir}</span>
-        ${willProgress ? `<span class="text-green-400">→ рекомендуем ${suggested}кг</span>` : `<span class="text-gray-500">· цель ${repStr}</span>`}
-      </div>`;
-    } else {
-      lastHint = `<div class="text-[11px] mb-2 text-gray-500">Первый раз — введи вес, мы запомним для след. тренировки</div>`;
-    }
-    if(!S.workoutSets[ex.exercise_id]) S.workoutSets[ex.exercise_id]=[];
-    const methodBadge = (ex.suggested_method && ex.suggested_method!=='normal') ? `<span class="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-pink/20 text-pink border border-pink/30">${ex.suggested_method}</span>` : '';
-    const methodHint = (ex.suggested_method && ex.suggested_method!=='normal') ? `<div class="text-[10px] text-pink/80 mb-2">Метод: ${ex.suggested_method} — ${ex.suggested_method==='drop_set'?'дроп-сет: снизь вес после отказа':ex.suggested_method==='rest_pause'?'rest-pause: 15с пауза и ещё подход':ex.suggested_method==='pyramid'?'пирамида: наращивай вес':ex.suggested_method==='amrap'?'AMRAP: максимум за время':ex.suggested_method==='emom'?'EMOM: каждую минуту':''}</div>` : '';
-    let setsHTML = S.workoutSets[ex.exercise_id].map((s,i) => `
-      <div class="set-row flex items-center gap-2 p-2 rounded-lg border border-transparent ${s.done?'done':''}">
-        <span class="text-xs text-gray-500 w-4">#${i+1}</span>
-        <input type="number" step="0.5" value="${s.weight !== '' ? s.weight : ''}" placeholder="${last ? last.weight : ''}" class="input-dark py-1 text-center" onchange="upd('${ex.exercise_id}',${i},'weight',this.value)">
-        <span class="text-xs">×</span>
-        <input type="number" value="${s.reps !== '' ? s.reps : ''}" placeholder="${last ? last.reps : ''}" class="input-dark py-1 text-center" onchange="upd('${ex.exercise_id}',${i},'reps',this.value)">
-        <span class="text-xs">RIR</span>
-        <input type="number" value="${s.rir !== '' ? s.rir : ''}" placeholder="${last ? last.rir : 2}" class="input-dark py-1 text-center" onchange="upd('${ex.exercise_id}',${i},'rir',this.value)">
-        <select onchange="upd('${ex.exercise_id}',${i},'set_type',this.value)" class="input-dark py-1 text-center text-xs w-20"><option value="normal" ${s.set_type==='normal'?'selected':''}>norm</option><option value="drop_set" ${s.set_type==='drop_set'?'selected':''}>drop</option><option value="rest_pause" ${s.set_type==='rest_pause'?'selected':''}>rest</option><option value="pyramid" ${s.set_type==='pyramid'?'selected':''}>pyr</option></select>
-        <button onclick="done('${ex.exercise_id}',${i})" class="w-8 h-8 rounded bg-purple/20 text-purple flex items-center justify-center"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></button>
-      </div>`).join('');
-      
-    cont.innerHTML += `<div class="glass p-4 border-l-4 border-purple"><div class="text-white font-bold mb-2 flex flex-wrap items-center gap-1">${e.name} <span class="text-xs text-gray-500 font-normal">(${ex.target_sets||ex.sets||3}×${repStr})</span>${methodBadge}<button onclick="swapExercise('${ex.exercise_id}')" class="ml-auto text-[10px] px-2 py-1 rounded bg-white/10 text-purple border border-purple/20 hover:bg-purple/20">Тренажер занят → Заменить</button></div>${methodHint}${lastHint}<div id="plates-${ex.exercise_id}" class="flex flex-wrap gap-1 my-1"></div>${setsHTML}</div>`;
-    setTimeout(()=>{ try{ const w=parseFloat(S.workoutSets[ex.exercise_id]?.[0]?.weight||0); if(w>=20 && typeof renderPlates==='function') renderPlates(w, 'plates-'+ex.exercise_id); }catch{} }, 0);
-  });
-  // показать баннер прогрессии если не скрыт
-  const hint = document.getElementById('progression-hint');
-  if(hint){
-    const dismissed = localStorage.getItem('prog_hint_dismissed') === '1';
-    hint.classList.toggle('hidden', dismissed);
-  }
-}
-
-window.upd = (eid, idx, field, val) => {
-  if(field==='set_type'){ S.workoutSets[eid][idx][field]=val; return; }
-  const num = parseFloat(val);
-  S.workoutSets[eid][idx][field] = isNaN(num) ? '' : num;
-};
-function dismissProgressionHint(){
-  const h = document.getElementById('progression-hint');
-  if(h) h.classList.add('hidden');
-  localStorage.setItem('prog_hint_dismissed','1');
-}
-window.done = (eid, idx) => { 
-  let s = S.workoutSets[eid]?.[idx]; if(!s) return alert('Ошибка: подход не найден');
-  if(s.weight === '' || s.reps === '' || s.reps <= 0) return alert('Введи вес и повторения (>0)');
-  s.done = true; 
-  let next = S.workoutSets[eid][idx+1];
-  if(next && (next.weight === '' || next.weight === 0)){
-    const ex = S.dayExercises.find(x=>String(x.exercise_id)===String(eid));
-    const repStr = ex ? (ex.target_reps||ex.reps_target||'8-12') : '8-12';
-    const tr = parseInt(String(repStr).split('-')[1] || repStr);
-    if(s.rir >= 1 && s.reps >= tr && s.weight > 0){
-      next.weight = parseFloat((parseFloat(s.weight) + 2.5).toFixed(2));
-    } else {
-      next.weight = s.weight;
-    }
-  }
-  renderExerciseCards();
-  startRestTimer(90);
-};
-async function swapExercise(exerciseId){
-  const ex=S.dayExercises.find(x=>String(x.exercise_id)===String(exerciseId));
-  if(!ex) return alert('Упражнение не найдено');
-  const btn=event?.target; const old=btn?btn.textContent:'';
-  if(btn) btn.textContent='Подбираю...';
-  try{
-    const exclude=S.dayExercises.map(x=>x.exercise_id);
-    const alt=await api('/api/workouts/swap-exercise',{method:'POST', body:JSON.stringify({exercise_id: exerciseId, exclude_ids: exclude})});
-    const oldSets=S.workoutSets[exerciseId];
-    ex.exercise_id=alt.id; ex.exercises=alt;
-    if(oldSets){ S.workoutSets[alt.id]=oldSets; delete S.workoutSets[exerciseId]; }
-    renderExerciseCards();
-  }catch(e){ alert('Замена: '+e.message); } finally{ if(btn) btn.textContent=old||'Тренажер занят → Заменить'; }
-}
-
-async function finishWorkout() {
-  let sets = [];
-  Object.keys(S.workoutSets).forEach(eid => {
-    S.workoutSets[eid].forEach((s, i) => {
-      if(s.done) {
-        sets.push({ 
-          exercise_id: eid, 
-          set_number: i+1, 
-          set_type: s.set_type||'normal',
-          weight: Number(s.weight), 
-          reps: Number(s.reps), 
-          rir: s.rir === '' ? 2 : Number(s.rir) 
-        });
-      }
-    });
-  });
-  
-  if(!sets.length) return alert('Нет завершённых подходов!');
-  const btnFinish = document.getElementById('btn-finish');
-  if (btnFinish) { btnFinish.innerHTML = '<span class="spinner w-4 h-4 border-2"></span> Сохранение...'; btnFinish.disabled=true; }
-  
-  try {
-    let res;
-    try{
-      res = await api('/api/workouts/complete', { method: 'POST', body: JSON.stringify({ user_id: String(S.userId), plan_id: String(S.user.current_plan_id||''), day_number: S.selectedDay, sets }) });
-    }catch(e){
-      const legacySets = sets.map(s=>({exercise_id: s.exercise_id, set_number: s.set_number, weight: s.weight, reps: s.reps, rir: s.rir}));
-      res = await api('/api/finish_workout', { method: 'POST', body: JSON.stringify({ user_id: S.userId, day_number: S.selectedDay, sets: legacySets }) });
-    }
-    S.lastWeights = await api('/api/last_weights/' + S.userId);
-    
-    const pCont = document.getElementById('progression-results');
-    if (pCont) {
-      pCont.innerHTML = '';
-      if(res.progressions && res.progressions.length) {
-        res.progressions.forEach(p => {
-          let eName = S.dayExercises.find(e => String(e.exercise_id)===String(p.exercise_id))?.exercises.name || 'Упражнение';
-          pCont.innerHTML += `<div class="glass p-3 mb-2 flex items-center gap-2"><svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941"/></svg> ${eName}: <span class="text-gray-400">${p.old_weight} кг</span> → <span class="text-green-400 font-bold">${p.new_weight} кг</span></div>`;
-        });
-      }
-    }
-    showSection('workout-complete');
-  } catch(e) { alert(e.message); }
-  if (btnFinish) { btnFinish.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Завершить'; btnFinish.disabled=false; }
-}
-
-// Pull-up Plan Data & Rendering
-const PULLUP_STAGES = [
-  { 
-    id: 1, name: 'Этап 1: Основа', 
-    goal: 'Укрепить хват и латы',
-    exercises: [
-      { name: 'Висячие на турнике', sets: 3, reps: '30-60 сек', desc: 'Просто виси, набирай время' },
-      { name: 'Австралийские подтягивания', sets: 3, reps: '8-12', desc: 'Ногами на полу, корпус прямым' },
-      { name: 'Скакалка / Кардио', sets: 1, reps: '5 мин', desc: 'Разогрев перед тренировкой' }
-    ],
-    test: 'Австралийские: 3×12 чистых'
-  },
-  { 
-    id: 2, name: 'Этап 2: Негативные', 
-    goal: 'Научиться контролировать опускание',
-    exercises: [
-      { name: 'Негативные подтягивания', sets: 3, reps: '3-5', desc: 'Поднимись (прыжок/табурет), опускайся 3-5 сек' },
-      { name: 'Австралийские подтягивания', sets: 3, reps: '10-15', desc: 'Продолжай укреплять' },
-      { name: 'Висячие с подтягиванием лопаток', sets: 3, reps: '8-10', desc: 'В висе подтяни лопатки вниз, не сгибая руки' }
-    ],
-    test: 'Негативные: 5 подходов по 5 сек'
-  },
-  { 
-    id: 3, name: 'Этап 3: С эспандером', 
-    goal: 'Делать полные подтягивания с помощью',
-    exercises: [
-      { name: 'Подтягивания с эспандером', sets: 3, reps: '5-8', desc: 'Эспандер под ногу/колено, уменьшай сопротивление' },
-      { name: 'Негативные подтягивания', sets: 2, reps: '4-6', desc: 'Опускание 4-5 сек' },
-      { name: 'Австралийские (широкий хват)', sets: 2, reps: '8-10', desc: 'Разнообразие угла' }
-    ],
-    test: 'С эспандером: 3×8 (самый слабый эспандер)'
-  },
-  { 
-    id: 4, name: 'Этап 4: Первое чистое', 
-    goal: 'Сделать 1 подтягивание без помощи',
-    exercises: [
-      { name: 'Попытки чистого подтягивания', sets: 5, reps: '1-3', desc: 'Макс. усилие, долгие отдыхи 3-5 мин' },
-      { name: 'Негативные (контроль)', sets: 2, reps: '3-5', desc: 'Поддержание навыка' },
-      { name: 'Австралийские / Эспандер', sets: 2, reps: '8-10', desc: 'Объём для латов' }
-    ],
-    test: '1 чистое подтягивание!'
-  },
-  { 
-    id: 5, name: 'Этап 5: Объём', 
-    goal: 'Довести до 5-10 подтягиваний',
-    exercises: [
-      { name: 'Подтягивания (лендинг)', sets: 4, reps: 'AMRAP', desc: 'Макс. повт. в каждом подходе' },
-      { name: 'Негативные с паузой', sets: 2, reps: '3-5', desc: 'Пауза 2 сек в нижней точке' },
-      { name: 'Взрывные подтягивания', sets: 3, reps: '3-5', desc: 'Рывок вверх, медленно вниз' }
-    ],
-    test: '5 чистых подтягиваний за подход'
-  }
-];
-
-function renderPullupPlan() {
-  const cont = document.getElementById('pullup-stages');
-  if (!cont) return;
-  cont.innerHTML = '';
-  
-  // Get saved progress from localStorage
-  const progress = JSON.parse(localStorage.getItem('pullup_progress') || '{}');
-  const currentStage = parseInt(localStorage.getItem('pullup_current_stage') || '1');
-  
-  PULLUP_STAGES.forEach((stage, idx) => {
-    const isComplete = progress[stage.id] === true;
-    const isCurrent = stage.id === currentStage;
-    const isLocked = stage.id > currentStage;
-    
-    let html = `
-      <div class="glass p-4 ${isCurrent ? 'border-l-4 border-purple' : ''} ${isLocked ? 'opacity-50' : ''}">
-        <div class="flex items-start justify-between mb-3">
-          <div>
-            <div class="text-white font-bold">${stage.name}</div>
-            <div class="text-purple text-xs font-medium">${stage.goal}</div>
-          </div>
-          <div class="w-8 h-8 rounded-full ${isComplete ? 'bg-green-500/20 text-green-400' : isCurrent ? 'bg-purple/20 text-purple' : 'bg-gray-700/40 text-gray-500'} flex items-center justify-center">${isComplete ? '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>' : isCurrent ? '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>' : '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg>'}</div>
-        </div>
-        <div class="space-y-2 mb-3">
-    `;
-    
-    stage.exercises.forEach(ex => {
-      html += `
-        <div class="flex items-center gap-3 text-sm p-2 bg-black/20 rounded">
-          <span class="text-purple font-mono w-20">${ex.sets}×${ex.reps}</span>
-          <span class="text-white font-medium">${ex.name}</span>
-          <span class="text-gray-400 text-xs">${ex.desc}</span>
-        </div>
-      `;
-    });
-    
-    html += `
-        </div>
-        <div class="text-green-400 text-xs font-medium flex items-center gap-1"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4"/></svg> Тест перехода: ${stage.test}</div>
-        ${isCurrent && !isComplete ? `
-          <button onclick="completePullupStage(${stage.id})" class="btn-primary mt-3 w-full text-sm flex items-center justify-center gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Отметить этап пройденным
-          </button>
-        ` : isComplete ? `
-          <div class="text-green-400 text-xs mt-3 text-center flex items-center justify-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Этап пройден! Переходи к следующему</div>
-        ` : ''}
-      </div>
-    `;
-    cont.innerHTML += html;
-  });
-  
-  // Render progress summary
-  renderPullupProgress(progress, currentStage);
-}
-
-function renderPullupProgress(progress, currentStage) {
-  const cont = document.getElementById('pullup-progress');
-  if (!cont) return;
-  const completedCount = Object.keys(progress).filter(k => progress[k] === true).length;
-  
-  let html = `
-    <div class="flex items-center justify-between">
-      <span class="text-gray-400">Пройдено этапов</span>
-      <span class="text-2xl font-black grad-text">${completedCount} / ${PULLUP_STAGES.length}</span>
-    </div>
-    <div class="h-2 bg-gray-800 rounded overflow-hidden mt-2">
-      <div class="h-full bg-gradient-to-r from-purple to-pink" style="width: ${(completedCount / PULLUP_STAGES.length) * 100}%"></div>
-    </div>
-    <div class="text-xs text-gray-500 mt-2">Текущий: ${PULLUP_STAGES[currentStage - 1]?.name || 'Завершён!'}</div>
-  `;
-  cont.innerHTML = html;
-}
-
-function completePullupStage(stageId) {
-  const progress = JSON.parse(localStorage.getItem('pullup_progress') || '{}');
-  progress[stageId] = true;
-  localStorage.setItem('pullup_progress', JSON.stringify(progress));
-  
-  // Unlock next stage
-  if (stageId < PULLUP_STAGES.length) {
-    localStorage.setItem('pullup_current_stage', stageId + 1);
-  }
-  
-  renderPullupPlan();
-}
-
-// Call render when section is shown
-const originalShowSection = showSection;
-showSection = function(id) {
-  originalShowSection(id);
-  if (id === 'pullup-plan') renderPullupPlan();
-  if (id === 'plan-select') loadPlans();
-};
-
-// ================================================================
-// CARDIO RUNNER MODULE — LISS → EMOM MetCon → LISS Flush
-// ================================================================
-const CR = {
-  phase: 0,        // 0=idle, 1=LISS entry, 2=EMOM, 3=LISS flush
-  paused: false,
-  startedAt: 0,    // Date.now() when phase started
-  pausedAt: 0,     // accumulated pause time
-  pauseStart: 0,
-  phaseEndMs: 0,   // target end timestamp
-  globalStartedAt: 0,
-  emomRound: 1,    // 1-3
-  emomStation: 1,  // 1-5 within each round
-  emomMinute: 1,   // 1-15 global minute
-  tickId: null,
-  audioCtx: null,
-  completedRounds: 0,
-};
-
-const EMOM_STATIONS = [
-  { name: '18 Махов гирей', reps: '18 повторений', icon: '🏋️', kg: '16–20 кг' },
-  { name: '15 Отжиманий от пола', reps: '15 повторений', icon: '💪', kg: '' },
-  { name: '14 Кубковых приседаний', reps: '14 повторений', icon: '🦵', kg: '12–16 кг' },
-  { name: '35сек Скалолаз', reps: '35 секунд', icon: '🧗', kg: '' },
-  { name: 'Отдых и восстановление', reps: '60 секунд', icon: '😮‍💨', kg: '' },
-];
-
-const PHASE_DURATIONS = [
-  0,           // phase 0 unused
-  15 * 60,     // phase 1: LISS 15 min
-  15 * 60,     // phase 2: EMOM 15 min (3 rounds × 5 min)
-  15 * 60,     // phase 3: LISS flush 15 min
-];
-
-function crInitAudio() {
-  // AudioContext must be created inside user gesture for Safari
-  if (!CR.audioCtx) {
-    CR.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  }
-  if (CR.audioCtx.state === 'suspended') CR.audioCtx.resume();
-}
-
-function crBeep(freq, durationMs) {
-  if (!CR.audioCtx) return;
-  try {
-    const osc = CR.audioCtx.createOscillator();
-    const gain = CR.audioCtx.createGain();
-    osc.frequency.value = freq;
-    osc.type = 'square';
-    gain.gain.setValueAtTime(0.15, CR.audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, CR.audioCtx.currentTime + durationMs / 1000);
-    osc.connect(gain);
-    gain.connect(CR.audioCtx.destination);
-    osc.start();
-    osc.stop(CR.audioCtx.currentTime + durationMs / 1000);
-  } catch(e) { /* silently fail */ }
-}
-
-function crBeepStart()  { crBeep(880, 400); try { navigator.vibrate && navigator.vibrate([200,80,200]); } catch{} }
-function crBeepTick()   { crBeep(660, 150); try { navigator.vibrate && navigator.vibrate(80); } catch{} }
-function crBeepFinish() { crBeep(440, 600); crBeep(880, 600); try { navigator.vibrate && navigator.vibrate([300,100,300,100,300]); } catch{} }
-
-function crFormatTime(totalSec) {
-  if (totalSec < 0) totalSec = 0;
-  const m = Math.floor(totalSec / 60).toString().padStart(2, '0');
-  const s = Math.floor(totalSec % 60).toString().padStart(2, '0');
-  return m + ':' + s;
-}
-
-function launchCardioRunner() {
-  if (!S.userId) return alert('Сначала выбери профиль');
-  crInitAudio(); // user gesture — unlock audio
-  CR.phase = 1;
-  CR.paused = false;
-  CR.pausedAt = 0;
-  CR.pauseStart = 0;
-  CR.emomRound = 1;
-  CR.emomStation = 1;
-  CR.emomMinute = 1;
-  CR.completedRounds = 0;
-  CR.globalStartedAt = Date.now();
-  crStartPhase(1);
-  showSection('cardio-runner');
-}
-
-function crStartPhase(phaseNum) {
-  CR.phase = phaseNum;
-  CR.startedAt = Date.now();
-  CR.pausedAt = 0;
-  CR.pauseStart = 0;
-  CR.paused = false;
-  const dur = PHASE_DURATIONS[phaseNum];
-  CR.phaseEndMs = CR.startedAt + dur * 1000;
-
-  // Update phase segments
-  for (let i = 1; i <= 3; i++) {
-    const seg = document.getElementById('cr-seg-' + i);
-    if (!seg) continue;
-    seg.classList.remove('active', 'done');
-    if (i < phaseNum) seg.classList.add('done');
-    else if (i === phaseNum) seg.classList.add('active');
-  }
-
-  const phaseLabel = document.getElementById('cr-phase-text');
-  const mainTimer = document.getElementById('cr-main-timer');
-  const hint = document.getElementById('cr-hint');
-  const emomPanel = document.getElementById('cr-emom-panel');
-  const pulseHint = document.getElementById('cr-pulse-hint');
-  const pulseText = document.getElementById('cr-pulse-text');
-  const phaseLabelBox = document.getElementById('cr-phase-label');
-
-  if (phaseNum === 1) {
-    if (phaseLabel) phaseLabel.textContent = 'Фаза 1: LISS Вход';
-    if (hint) hint.textContent = 'Ходьба в гору: уклон 8–10%, скорость 4.8–5.2 км/ч';
-    if (emomPanel) emomPanel.classList.add('hidden');
-    if (pulseHint) pulseHint.classList.remove('hidden');
-    if (pulseText) pulseText.textContent = 'Целевой пульс: 120–135 уд/мин';
-    if (phaseLabelBox) phaseLabelBox.style.background = 'rgba(139,92,246,.15)';
-    if (mainTimer) { mainTimer.classList.remove('hidden'); mainTimer.textContent = crFormatTime(dur); }
-    crBeepStart();
-  } else if (phaseNum === 2) {
-    CR.emomRound = 1;
-    CR.emomStation = 1;
-    CR.emomMinute = 1;
-    if (phaseLabel) phaseLabel.textContent = 'Фаза 2: EMOM MetCon';
-    if (mainTimer) mainTimer.classList.add('hidden');
-    if (emomPanel) emomPanel.classList.remove('hidden');
-    if (pulseHint) pulseHint.classList.remove('hidden');
-    if (pulseText) pulseText.textContent = 'Целевой пульс: 150–170 уд/мин';
-    if (hint) hint.textContent = 'Работай в начале минуты, остаток — отдых';
-    if (phaseLabelBox) phaseLabelBox.style.background = 'rgba(239,68,68,.15)';
-    crUpdateEMOMDisplay();
-    crBeepStart();
-  } else if (phaseNum === 3) {
-    if (phaseLabel) phaseLabel.textContent = 'Фаза 3: LISS Заминка';
-    if (hint) hint.textContent = 'Велотренажер / эллипсоид: 70–80 RPM в ровном темпе';
-    if (emomPanel) emomPanel.classList.add('hidden');
-    if (pulseHint) pulseHint.classList.remove('hidden');
-    if (pulseText) pulseText.textContent = 'Целевой пульс: 110–125 уд/мин';
-    if (phaseLabelBox) phaseLabelBox.style.background = 'rgba(34,197,94,.15)';
-    if (mainTimer) { mainTimer.classList.remove('hidden'); mainTimer.textContent = crFormatTime(dur); }
-    crBeepStart();
-  }
-
-  // Start tick loop
-  if (CR.tickId) clearInterval(CR.tickId);
-  CR.tickId = setInterval(crTick, 250);
-}
-
-function crTick() {
-  if (CR.paused || CR.phase === 0) return;
-  const now = Date.now();
-  const elapsed = (now - CR.startedAt - CR.pausedAt) / 1000;
-  const phaseDur = PHASE_DURATIONS[CR.phase];
-  const remaining = phaseDur - elapsed;
-
-  // Total elapsed
-  const totalEl = document.getElementById('cr-total-elapsed');
-  if (totalEl) {
-    const globalElapsed = (now - CR.globalStartedAt) / 1000;
-    totalEl.textContent = crFormatTime(globalElapsed);
-  }
-
-  if (CR.phase === 1 || CR.phase === 3) {
-    // Simple countdown
-    const mainTimer = document.getElementById('cr-main-timer');
-    if (mainTimer) mainTimer.textContent = crFormatTime(remaining);
-
-    if (remaining <= 0) {
-      clearInterval(CR.tickId);
-      CR.tickId = null;
-      if (CR.phase === 1) {
-        crStartPhase(2);
-      } else {
-        crFinishSession();
-      }
-    }
-  } else if (CR.phase === 2) {
-    // EMOM logic: each minute is a station
-    const minuteElapsed = elapsed % 60;  // seconds within current minute
-    const minuteRemaining = 60 - minuteElapsed;
-    const currentGlobalMinute = Math.floor(elapsed / 60) + 1;
-
-    // Update EMOM display
-    const emomTimer = document.getElementById('cr-emom-timer');
-    if (emomTimer) emomTimer.textContent = crFormatTime(minuteRemaining);
-
-    // 3-2-1 countdown beeps
-    const secLeft = Math.ceil(minuteRemaining);
-    if (secLeft === 3 || secLeft === 2 || secLeft === 1) {
-      // Only beep once per second (check fractional)
-      if (minuteRemaining - secLeft > -0.3 && minuteRemaining - secLeft < 0.05) {
-        crBeepTick();
-      }
-    }
-
-    // Check minute transition
-    if (currentGlobalMinute !== CR.emomMinute && currentGlobalMinute <= 15) {
-      CR.emomMinute = currentGlobalMinute;
-      CR.emomStation = ((currentGlobalMinute - 1) % 5) + 1;
-      CR.emomRound = Math.floor((currentGlobalMinute - 1) / 5) + 1;
-      crUpdateEMOMDisplay();
-      crBeepStart();
-    }
-
-    // Track completed rounds
-    CR.completedRounds = Math.min(3, Math.floor(elapsed / 300)); // 300s = 5min = 1 round
-
-    if (remaining <= 0) {
-      CR.completedRounds = 3;
-      clearInterval(CR.tickId);
-      CR.tickId = null;
-      crStartPhase(3);
-    }
-  }
-}
-
-function crUpdateEMOMDisplay() {
-  const station = EMOM_STATIONS[CR.emomStation - 1];
-  const stationEl = document.getElementById('cr-emom-station');
-  const roundEl = document.getElementById('cr-emom-round');
-  const stationNumEl = document.getElementById('cr-emom-station-num');
-  const minuteNumEl = document.getElementById('cr-emom-minute-num');
-
-  if (stationEl) {
-    stationEl.textContent = station.icon + ' МИНУТА ' + CR.emomMinute + ': ' + station.name;
-    // Flash animation
-    stationEl.classList.remove('cr-flash');
-    void stationEl.offsetWidth; // reflow
-    stationEl.classList.add('cr-flash');
-  }
-  if (roundEl) roundEl.textContent = 'Раунд ' + CR.emomRound + ' / 3';
-  if (stationNumEl) stationNumEl.textContent = CR.emomStation;
-  if (minuteNumEl) minuteNumEl.textContent = CR.emomMinute;
-}
-
-function cardioTogglePause() {
-  const pauseText = document.getElementById('cr-pause-text');
-  const pauseIcon = document.getElementById('cr-pause-icon');
-  if (!CR.paused) {
-    CR.paused = true;
-    CR.pauseStart = Date.now();
-    if (pauseText) pauseText.textContent = 'Продолжить';
-    if (pauseIcon) pauseIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"/>';
-  } else {
-    CR.pausedAt += Date.now() - CR.pauseStart;
-    CR.paused = false;
-    if (pauseText) pauseText.textContent = 'Пауза';
-    if (pauseIcon) pauseIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5"/>';
-  }
-}
-
-function cardioEarlyFinish() {
-  if (CR.phase === 0) return showSection('dashboard');
-  if (!confirm('Завершить кардио-сессию досрочно?')) return;
-  crFinishSession();
-}
-
-async function crFinishSession() {
-  if (CR.tickId) { clearInterval(CR.tickId); CR.tickId = null; }
-  crBeepFinish();
-  CR.phase = 0;
-
-  // Mark all segments done
-  for (let i = 1; i <= 3; i++) {
-    const seg = document.getElementById('cr-seg-' + i);
-    if (seg) { seg.classList.remove('active'); seg.classList.add('done'); }
-  }
-
-  const totalMinutes = Math.round((Date.now() - CR.globalStartedAt) / 60000);
-
-  // POST to backend
-  try {
-    const res = await api('/api/workouts/cardio-complete', {
-      method: 'POST',
-      body: JSON.stringify({
-        user_id: S.userId,
-        plan_id: S.user?.current_plan_id || null,
-        total_duration_minutes: totalMinutes,
-        emom_rounds_completed: CR.completedRounds || 0,
-        perceived_effort_rpe: 8,
-        notes: 'LISS ' + Math.min(15, totalMinutes) + 'м + EMOM ' + (CR.completedRounds || 0) + '/3 + Flush'
-      })
-    });
-    const pCont = document.getElementById('progression-results');
-    if (pCont) {
-      pCont.innerHTML = `
-        <div class="glass p-4 text-center" style="border-left:4px solid #F59E0B">
-          <div class="text-2xl mb-2">🔥</div>
-          <div class="text-white font-bold">Кардио-сессия завершена!</div>
-          <div class="text-gray-400 text-sm mt-2">${totalMinutes} мин • EMOM ${CR.completedRounds}/3 раундов</div>
-          <div class="text-gray-500 text-xs mt-1">${res.message || ''}</div>
-        </div>`;
-    }
-    const stats = document.getElementById('complete-stats');
-    if (stats) stats.textContent = 'Гибридное кардио: ' + totalMinutes + ' мин';
-  } catch(e) {
-    console.error('cardio-complete failed:', e);
-    const pCont = document.getElementById('progression-results');
-    if (pCont) pCont.innerHTML = `<div class="glass p-3 text-center"><div class="text-white font-bold">Кардио завершено! (${totalMinutes} мин)</div><div class="text-gray-500 text-xs mt-1">Данные не сохранены: ${e.message}</div></div>`;
-  }
-
-  showSection('workout-complete');
-}
-
-if(localStorage.getItem('ag_uid')) selectProfile(normalizeUid(localStorage.getItem('ag_uid')));
-else showSection('profile-select');
+// автологин + цель профиля на дашборде
+(async function init(){
+  const saved = localStorage.getItem('ag_uid');
+  if(saved){ await selectProfile(saved); }
+  const goalEl = document.getElementById('dash-goal');
+  if(goalEl){ const mo = new MutationObserver(()=>{ if(S.user && goalEl && !goalEl.textContent){ goalEl.textContent = S.user.goal || ''; } }); mo.observe(goalEl, {childList:true, characterData:true, subtree:true}); }
+})();
+const _origLoadDashboard = loadDashboard;
+loadDashboard = async function(){ await _origLoadDashboard(); const g = document.getElementById('dash-goal'); if(g) g.textContent = S.user.goal || ''; };
 </script>
 </body>
 </html>

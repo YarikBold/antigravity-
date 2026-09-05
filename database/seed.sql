@@ -2,11 +2,11 @@
 -- Обновление планов по документу «план тренировок»: Ярослав — Full Body A/B (чередование Дня А и Дня Б), Олеся — Низ/Верх/Низ
 -- Spec example: 00000000-0000-0000-0000-000000000001/002 + legacy 111/222 для обратной совместимости
 
-INSERT INTO users (id, name, gender, goal, current_weight, target_weight) VALUES
-  ('11111111-1111-1111-1111-111111111111', 'Ярик',  'male',   'Сушка/сброс веса 78→72кг, убрать отечность ног, прогресс в подтягиваниях', 78.0, 72.0),
-  ('22222222-2222-2222-2222-222222222222', 'Олеся', 'female', 'Качественный набор 46кг, акцент ягодицы/ноги/верх груди/осанка',              46.0, 49.0),
-  ('00000000-0000-0000-0000-000000000001', 'Ярик',  'male',   'Сушка/сброс веса 78→72кг', 78.0, 72.0),
-  ('00000000-0000-0000-0000-000000000002', 'Олеся', 'female', 'Набор 46кг ягодицы/ноги', 46.0, 49.0)
+INSERT INTO users (id, name, gender, goal, current_weight, target_weight, current_plan_id, schedule) VALUES
+  ('11111111-1111-1111-1111-111111111111', 'Ярик',  'male',   'Сушка/сброс веса 78→72кг, убрать отечность ног, прогресс в подтягиваниях', 78.0, 72.0, '33333333-3333-3333-3333-333333333333', '{1,3,5}'),
+  ('22222222-2222-2222-2222-222222222222', 'Олеся', 'female', 'Качественный набор 46кг, акцент ягодицы/ноги/верх груди/осанка',              46.0, 49.0, '44444444-4444-4444-4444-444444444444', '{1,3,5}'),
+  ('00000000-0000-0000-0000-000000000001', 'Ярик',  'male',   'Сушка/сброс веса 78→72кг', 78.0, 72.0, '33333333-3333-3333-3333-333333333333', '{1,3,5}'),
+  ('00000000-0000-0000-0000-000000000002', 'Олеся', 'female', 'Набор 46кг ягодицы/ноги', 46.0, 49.0, '44444444-4444-4444-4444-444444444444', '{1,3,5}')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO exercises (name, target_muscle, synergists, movement_pattern, equipment, mechanics, joint_stress, cns_load, media_url) VALUES
@@ -117,3 +117,47 @@ ON CONFLICT DO NOTHING;
 
 INSERT INTO plan_exercises (plan_id, day_number, exercise_id, order_index, target_sets, target_reps, suggested_method)
 SELECT '00000000-0000-0000-0000-000000000022', day_number, exercise_id, order_index, target_sets, target_reps, suggested_method FROM plan_exercises WHERE plan_id='44444444-4444-4444-4444-444444444444' ON CONFLICT DO NOTHING;
+
+-- ============================================================
+-- ГИБРИДНОЕ КАРДИО: упражнения + кардио-день 4 во всех планах
+-- (кардио-день постоянный дополнительный день: LISS вход -> EMOM MetCon -> LISS заминка)
+-- ============================================================
+
+INSERT INTO exercises (name, target_muscle, synergists, movement_pattern, equipment, mechanics, joint_stress, cns_load, media_url) VALUES
+  ('Ходьба в гору (LISS)',              'cardio',     ARRAY['glutes','hamstrings'],      'cardio',        'machine',    'isolation', ARRAY[]::TEXT[],             1, NULL),
+  ('Махи гирей',                        'hamstrings', ARRAY['glutes','core','shoulders'],'conditioning',  'kettlebell', 'compound',  ARRAY['lumbar','shoulder'],  3, NULL),
+  ('Отжимания от пола (MetCon)',        'chest',      ARRAY['triceps','shoulders','core'],'conditioning', 'bodyweight', 'compound',  ARRAY['shoulder','elbow'],   2, NULL),
+  ('Кубковые приседания (MetCon)',      'quads',      ARRAY['glutes','core'],            'conditioning',  'kettlebell', 'compound',  ARRAY['knee','lumbar'],      3, NULL),
+  ('Скалолаз (Mountain Climbers)',      'core',       ARRAY['hip_flexors','shoulders'],  'conditioning',  'bodyweight', 'compound',  ARRAY[]::TEXT[],             2, NULL),
+  ('Велотренажер / Заминка (LISS)',     'cardio',     ARRAY['quads','hamstrings'],       'cardio',        'machine',    'isolation', ARRAY[]::TEXT[],             1, NULL)
+ON CONFLICT (name) DO NOTHING;
+
+DELETE FROM plan_exercises WHERE day_number = 4 AND plan_id IN (
+  '33333333-3333-3333-3333-333333333333',
+  '44444444-4444-4444-4444-444444444444',
+  '00000000-0000-0000-0000-000000000011',
+  '00000000-0000-0000-0000-000000000022'
+);
+
+INSERT INTO plan_exercises (plan_id, day_number, exercise_id, order_index, target_sets, target_reps, suggested_method) VALUES
+  ('33333333-3333-3333-3333-333333333333', 4, (SELECT id FROM exercises WHERE name='Ходьба в гору (LISS)'),          1, 1, '15 мин',    'normal'),
+  ('33333333-3333-3333-3333-333333333333', 4, (SELECT id FROM exercises WHERE name='Махи гирей'),                    2, 3, '18',        'emom'),
+  ('33333333-3333-3333-3333-333333333333', 4, (SELECT id FROM exercises WHERE name='Отжимания от пола (MetCon)'),    3, 3, '15',        'emom'),
+  ('33333333-3333-3333-3333-333333333333', 4, (SELECT id FROM exercises WHERE name='Кубковые приседания (MetCon)'),  4, 3, '14',        'emom'),
+  ('33333333-3333-3333-3333-333333333333', 4, (SELECT id FROM exercises WHERE name='Скалолаз (Mountain Climbers)'),  5, 3, '35 сек',    'emom'),
+  ('33333333-3333-3333-3333-333333333333', 4, (SELECT id FROM exercises WHERE name='Велотренажер / Заминка (LISS)'), 6, 1, '15-20 мин', 'normal'),
+  ('44444444-4444-4444-4444-444444444444', 4, (SELECT id FROM exercises WHERE name='Ходьба в гору (LISS)'),          1, 1, '15 мин',    'normal'),
+  ('44444444-4444-4444-4444-444444444444', 4, (SELECT id FROM exercises WHERE name='Махи гирей'),                    2, 3, '18',        'emom'),
+  ('44444444-4444-4444-4444-444444444444', 4, (SELECT id FROM exercises WHERE name='Отжимания от пола (MetCon)'),    3, 3, '15',        'emom'),
+  ('44444444-4444-4444-4444-444444444444', 4, (SELECT id FROM exercises WHERE name='Кубковые приседания (MetCon)'),  4, 3, '14',        'emom'),
+  ('44444444-4444-4444-4444-444444444444', 4, (SELECT id FROM exercises WHERE name='Скалолаз (Mountain Climbers)'),  5, 3, '35 сек',    'emom'),
+  ('44444444-4444-4444-4444-444444444444', 4, (SELECT id FROM exercises WHERE name='Велотренажер / Заминка (LISS)'), 6, 1, '15-20 мин', 'normal')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO plan_exercises (plan_id, day_number, exercise_id, order_index, target_sets, target_reps, suggested_method)
+SELECT '00000000-0000-0000-0000-000000000011', day_number, exercise_id, order_index, target_sets, target_reps, suggested_method
+FROM plan_exercises WHERE plan_id='33333333-3333-3333-3333-333333333333' AND day_number=4 ON CONFLICT DO NOTHING;
+
+INSERT INTO plan_exercises (plan_id, day_number, exercise_id, order_index, target_sets, target_reps, suggested_method)
+SELECT '00000000-0000-0000-0000-000000000022', day_number, exercise_id, order_index, target_sets, target_reps, suggested_method
+FROM plan_exercises WHERE plan_id='44444444-4444-4444-4444-444444444444' AND day_number=4 ON CONFLICT DO NOTHING;

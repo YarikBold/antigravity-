@@ -16,11 +16,13 @@ try:
     from app.routes.workouts import router as workouts_router, legacy_router as workouts_legacy
     from app.routes.readiness import router as readiness_router, legacy_router as readiness_legacy
     from app.routes.analytics import router as analytics_router
+    from app.routes.bench import router as bench_router
 except ModuleNotFoundError:
     from backend.app.database import get_supabase
     from backend.app.routes.workouts import router as workouts_router, legacy_router as workouts_legacy
     from backend.app.routes.readiness import router as readiness_router, legacy_router as readiness_legacy
     from backend.app.routes.analytics import router as analytics_router
+    from backend.app.routes.bench import router as bench_router
 
 app = FastAPI(title="Antigravity", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -28,6 +30,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 app.include_router(workouts_router)
 app.include_router(readiness_router)
 app.include_router(analytics_router)
+app.include_router(bench_router)
 app.include_router(workouts_legacy)
 app.include_router(readiness_legacy)
 
