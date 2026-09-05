@@ -1,24 +1,117 @@
 // bench_calendar.js [6] — вкладка «Жим-календарь»: сетка Пн-Пт, модалка «Записать факт», AMRAP авто-буст (+5 кг при >=3 повт. на 88%)
 
-let BC_STATE = { base: 82.5, month: null, data: null };
+const BC_DEFAULT_BASE = 82.5;
+const BC_HEAVY_PERCENTS = [0.75, 0.82, 0.88, 0.85];
+const BC_VOLUME_PERCENTS = [0.65, 0.68, 0.70, 0.72];
+const BC_DOW_NAMES = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+const BC_OFP_BY_DOW = { 2: 'Спина', 3: 'Ноги', 5: 'Плечи и руки' };
+
+let BC_STATE = { base: BC_DEFAULT_BASE, month: null, data: null, notice: '' };
 
 function bcLocalStorageBase(){ return parseFloat(localStorage.getItem('bc_base_1rm') || '0') || 0; }
 
+function bcRoundWeight(value){ return Math.round((Number(value) || 0) / 2.5) * 2.5; }
+
+function bcLocalPlates(weight){
+  if(typeof plateBreakdown === 'function') return plateBreakdown(weight);
+  const plates = [];
+  let perSide = ((Number(weight) || 0) - 20) / 2;
+  for(const plate of [25, 20, 15, 10, 5, 2.5, 1.25]){
+    while(perSide >= plate - 0.001){
+      plates.push(plate);
+      perSide = Math.round((perSide - plate) * 100) / 100;
+    }
+  }
+  return plates;
+}
+
+function bcLocalDate(year, month, day){
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+function bcLocalDay(base, year, month, day, weekNum, logged){
+  const date = new Date(year, month - 1, day);
+  const dow = date.getDay();
+  const card = {
+    date: bcLocalDate(year, month, day), day, dow: BC_DOW_NAMES[dow], week_num: weekNum,
+    type: 'info', title: '', percent: null, percent_delta: null, weight: null,
+    sets: null, reps: null, plates: [], amrap: false, logged: logged.has(bcLocalDate(year, month, day)),
+  };
+  if(dow === 1 || dow === 4){
+    const isHeavy = dow === 1;
+    const percent = (isHeavy ? BC_HEAVY_PERCENTS : BC_VOLUME_PERCENTS)[Math.min(weekNum, 4) - 1];
+    const weight = bcRoundWeight(base * percent);
+    card.type = isHeavy ? 'heavy' : 'volume';
+    card.title = isHeavy ? 'Тяжелый жим' : 'Скоростной жим';
+    card.percent = Math.round(percent * 100);
+    card.weight = weight;
+    card.sets = 4;
+    card.reps = isHeavy ? 4 : 7;
+    card.amrap = isHeavy && weekNum === 3;
+    card.plates = bcLocalPlates(weight);
+  } else if(BC_OFP_BY_DOW[dow]) {
+    card.title = `ОФП: ${BC_OFP_BY_DOW[dow]}`;
+  }
+  return card;
+}
+
+function buildLocalBenchCalendar(base, year, month){
+  const logged = new Set(JSON.parse(localStorage.getItem('bc_logged_dates') || '[]'));
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const weeks = [];
+  let week = [];
+  for(let day = 1; day <= daysInMonth; day++){
+    const date = new Date(year, month - 1, day);
+    const dow = date.getDay();
+    if(dow === 0 || dow === 6) continue;
+    const column = dow - 1;
+    while(week.length < column) week.push(null);
+    week.push(bcLocalDay(base, year, month, day, Math.floor((day - 1) / 7) + 1, logged));
+    if(column === 4){
+      weeks.push(week);
+      week = [];
+    }
+  }
+  if(week.length){
+    while(week.length < 5) week.push(null);
+    weeks.push(week);
+  }
+  for(const row of weeks){
+    for(const cell of row){
+      if(cell && cell.percent !== null) cell.percent_delta = cell.percent - 75;
+    }
+  }
+  const amrapDay = weeks.flat().find(cell => cell && cell.amrap);
+  return {
+    base_1rm: base,
+    target: { min: 85, max: 90 },
+    amrap: { week: 3, min_reps: 3, boost_kg: 5, date: amrapDay?.date || null, rule: 'AMRAP в последнем сете на 88% 1ПМ: >= 3 повторений -> база +5 кг' },
+    month: { year, month, label: `${year}-${String(month).padStart(2, '0')}` },
+    weeks,
+    base_source: 'device',
+  };
+}
+
 async function loadBench(){
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth() + 1;
+  const localBase = bcLocalStorageBase() || BC_DEFAULT_BASE;
   try{
-    const today = new Date();
-    const qs = new URLSearchParams({ year: today.getFullYear(), month: today.getMonth()+1 });
+    const qs = new URLSearchParams({ year, month });
     if(S.userId) qs.set('user_id', S.userId);
-    const lsBase = bcLocalStorageBase();
-    if(lsBase > 0) qs.set('base_1rm', lsBase);
+    if(localBase > 0) qs.set('base_1rm', localBase);
     const data = await api('/api/bench/calendar?' + qs.toString());
     BC_STATE.data = data;
     BC_STATE.base = data.base_1rm;
+    BC_STATE.notice = '';
     localStorage.setItem('bc_base_1rm', String(data.base_1rm));
     renderBench();
   }catch(e){
-    const cont = document.getElementById('bench-body');
-    if(cont) cont.innerHTML = `<div class="glass p-4 text-red-400">Ошибка загрузки: ${e.message}</div>`;
+    BC_STATE.data = buildLocalBenchCalendar(localBase, year, month);
+    BC_STATE.base = localBase;
+    BC_STATE.notice = 'Сервер временно недоступен. Показана локальная версия календаря; синхронизация повторится после восстановления соединения.';
+    renderBench();
   }
 }
 
@@ -30,6 +123,7 @@ function renderBench(){
 
   const inTarget = d.base_1rm >= d.target.min;
   el.innerHTML = `
+    ${BC_STATE.notice ? `<div class="glass p-3 mb-3 text-xs text-yellow-300 border border-yellow-500/20">${BC_STATE.notice}</div>` : ''}
     <div class="glass p-4 mb-4 grad-border">
       <div class="flex items-center justify-between mb-2">
         <div>

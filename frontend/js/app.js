@@ -24,7 +24,16 @@ function showSection(id) {
   if (header) header.classList.toggle('hidden', id === 'profile-select');
   if (id === 'pullup-plan' && typeof renderPullupPlan === 'function') renderPullupPlan();
   if (id === 'plan-select' && typeof loadPlans === 'function') loadPlans();
-  if (id === 'bench-calendar' && typeof loadBench === 'function') loadBench();
+  if (id === 'bench-calendar' && typeof loadBench === 'function') {
+    loadBench().catch(err => {
+      console.error('Failed to load bench calendar:', err);
+      const message = document.getElementById('bench-error');
+      if (message) {
+        message.textContent = 'Не удалось загрузить жим-календарь. Попробуйте ещё раз.';
+        message.classList.remove('hidden');
+      }
+    });
+  }
 }
 
 const LEGACY_MAP = { '1': '11111111-1111-1111-1111-111111111111', '2': '22222222-2222-2222-2222-222222222222' };
