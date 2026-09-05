@@ -23,6 +23,14 @@ class CompleteRequest(BaseModel):
     day_number: Optional[int] = None
     sets: List[SetLog]
 
+class CardioCompleteRequest(BaseModel):
+    user_id: str
+    plan_id: Optional[str] = None
+    total_duration_minutes: int = 45
+    emom_rounds_completed: int = 3
+    perceived_effort_rpe: int = 8
+    notes: Optional[str] = ""
+
 class SuggestRequest(BaseModel):
     exercise_id: str
     plan_id: Optional[str] = None
@@ -101,12 +109,13 @@ async def complete_workout(req: CompleteRequest):
             else:
                 sb.table("workout_logs").insert({"user_id": req.user_id, "exercise_id": s.exercise_id, "weight": s.weight, "reps": s.reps, "rir": s.rir, "date": datetime.utcnow().isoformat()}).execute()
             logged+=1
-            # PR check e1RM
+            # PR check e1RM — skip for cardio/conditioning sets with no weight
             try:
-                e1rm = epley_e1rm(s.weight, s.reps)
-                rec = sb.table("personal_records").select("e1rm").eq("user_id", req.user_id).eq("exercise_id", s.exercise_id).limit(1).execute()
-                if not rec.data or e1rm > float(rec.data[0]["e1rm"]):
-                    sb.table("personal_records").upsert({"user_id": req.user_id, "exercise_id": s.exercise_id, "e1rm": e1rm, "weight": s.weight, "reps": s.reps, "date": str(date.today())}, on_conflict="user_id,exercise_id").execute()
+                if s.weight and s.weight > 0 and s.reps and s.reps > 0:
+                    e1rm = epley_e1rm(s.weight, s.reps)
+                    rec = sb.table("personal_records").select("e1rm").eq("user_id", req.user_id).eq("exercise_id", s.exercise_id).limit(1).execute()
+                    if not rec.data or e1rm > float(rec.data[0]["e1rm"]):
+                        sb.table("personal_records").upsert({"user_id": req.user_id, "exercise_id": s.exercise_id, "e1rm": e1rm, "weight": s.weight, "reps": s.reps, "date": str(date.today())}, on_conflict="user_id,exercise_id").execute()
             except Exception:
                 pass
         for eid, last_set in last_per_ex.items():
@@ -129,6 +138,33 @@ async def complete_workout(req: CompleteRequest):
         raise
     except Exception as e:
         raise HTTPException(500, f"complete failed: {e}")
+
+@router.post("/cardio-complete")
+async def cardio_complete(req: CardioCompleteRequest):
+    """Save a hybrid cardio session (LISS+EMOM+LISS) without triggering e1RM / progression."""
+    sb = get_supabase()
+    try:
+        log_data = {
+            "user_id": req.user_id,
+            "plan_id": req.plan_id,
+            "date": str(date.today()),
+            "completed": True,
+            "session_type": "cardio",
+            "total_duration_minutes": req.total_duration_minutes,
+            "perceived_effort_rpe": req.perceived_effort_rpe,
+            "notes": req.notes or f"LISS+EMOM({req.emom_rounds_completed}r)+LISS Flush"
+        }
+        ins = sb.table("workout_logs").insert(log_data).execute()
+        log_id = ins.data[0]["id"] if ins.data else None
+        return {
+            "status": "ok",
+            "log_id": log_id,
+            "message": f"Кардио-сессия сохранена: {req.total_duration_minutes} мин, EMOM {req.emom_rounds_completed}/3, RPE {req.perceived_effort_rpe}"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"cardio-complete failed: {e}")
 
 @legacy_router.post("/finish_workout")
 async def legacy_finish(req: LegacyFinishRequest):

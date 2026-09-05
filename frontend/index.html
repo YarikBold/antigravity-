@@ -59,6 +59,20 @@
     .cal-day.missed { border-bottom: 3px solid #EF4444; background: rgba(239,68,68,0.1); }
     .day-name { font-size: 11px; text-transform: uppercase; color: #9CA3AF; font-weight: 600; margin-bottom: 4px; }
     .day-num { font-size: 20px; font-weight: 800; color: #FFF; }
+
+    /* === Cardio Runner === */
+    #cardio-runner.active { display:flex !important; flex-direction:column; }
+    .cr-timer { font-size: 72px; font-weight: 900; font-family: 'Inter', monospace; line-height: 1; letter-spacing: -2px; }
+    .cr-phase-bar { display:flex; gap:4px; }
+    .cr-phase-seg { flex:1; height:6px; border-radius:9999px; background:rgba(139,92,246,.15); transition: background .3s; }
+    .cr-phase-seg.done { background: #22C55E; }
+    .cr-phase-seg.active { background: linear-gradient(90deg,#8B5CF6,#EC4899); animation: pulse-neon 1.5s ease-in-out infinite; }
+    .cr-station { font-size: 22px; font-weight: 800; line-height: 1.2; }
+    .cr-minute-timer { font-size: 56px; font-weight: 900; font-family: 'Inter', monospace; }
+    .cr-round-badge { display:inline-flex; align-items:center; gap:6px; padding:6px 16px; border-radius:12px; font-weight:700; font-size:14px; }
+    @keyframes cr-flash { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .cr-flash { animation: cr-flash .5s ease-in-out 3; }
+    .cr-hint { font-size: 13px; color: #9CA3AF; line-height: 1.4; }
   </style>
 </head>
 <body>
@@ -67,6 +81,10 @@
   <div class="max-w-lg mx-auto flex items-center justify-between">
     <h1 class="text-lg font-black tracking-tight grad-text">ANTIGRAVITY</h1>
     <div class="flex items-center gap-3">
+      <button onclick="launchCardioRunner()" class="text-xs px-3 py-1.5 rounded-lg font-bold flex items-center gap-1" style="background:linear-gradient(135deg,#F59E0B,#EF4444);color:#fff;border:none;cursor:pointer" title="Запустить кардио-сессию">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 6.75 6.75 0 009 18.75a6.768 6.768 0 006.362-13.536z"/></svg>
+        Кардио
+      </button>
       <span id="header-user" class="text-xs text-gray-400"></span>
       <button onclick="logout()" class="text-gray-500 hover:text-white text-xs">Выйти</button>
     </div>
@@ -397,6 +415,71 @@
   <p class="text-gray-500 text-xs mt-4">Звук + вибрация на смену интервала</p>
 </section>
 
+<!-- ========== CARDIO RUNNER ========== -->
+<section id="cardio-runner" class="section pt-4" style="min-height:100dvh">
+  <div class="flex items-center justify-between mb-4">
+    <button onclick="cardioEarlyFinish()" class="text-gray-400 text-sm flex items-center gap-1">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg> Завершить
+    </button>
+    <span class="text-xs text-gray-500 font-mono" id="cr-total-elapsed">00:00</span>
+  </div>
+
+  <!-- Phase progress bar -->
+  <div class="cr-phase-bar mb-6">
+    <div class="cr-phase-seg" id="cr-seg-1"></div>
+    <div class="cr-phase-seg" id="cr-seg-2"></div>
+    <div class="cr-phase-seg" id="cr-seg-3"></div>
+  </div>
+
+  <!-- Phase label -->
+  <div class="text-center mb-2">
+    <div class="cr-round-badge mx-auto" id="cr-phase-label" style="background:rgba(139,92,246,.15);color:#A78BFA">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 6.75 6.75 0 009 18.75a6.768 6.768 0 006.362-13.536z"/></svg>
+      <span id="cr-phase-text">Фаза 1: LISS Вход</span>
+    </div>
+  </div>
+
+  <!-- Main timer -->
+  <div class="text-center my-6">
+    <div class="cr-timer grad-text" id="cr-main-timer">15:00</div>
+    <div class="cr-hint mt-2" id="cr-hint">Ходьба в гору: уклон 8–10%, скорость 4.8–5.2 км/ч</div>
+  </div>
+
+  <!-- EMOM station display (hidden in LISS phases) -->
+  <div id="cr-emom-panel" class="hidden glass p-5 mb-4 text-center">
+    <div class="text-gray-400 text-xs uppercase tracking-wider mb-2" id="cr-emom-round">Раунд 1 / 3</div>
+    <div class="cr-station text-white mb-3" id="cr-emom-station">МИНУТА 1: 18 Махов гирей</div>
+    <div class="cr-minute-timer grad-text" id="cr-emom-timer">01:00</div>
+    <div class="mt-3 flex justify-center gap-4">
+      <div class="text-xs text-gray-500">Станция <span class="text-white font-bold" id="cr-emom-station-num">1</span>/5</div>
+      <div class="text-xs text-gray-500">Минута <span class="text-white font-bold" id="cr-emom-minute-num">1</span>/15</div>
+    </div>
+  </div>
+
+  <!-- Pulse zone hint -->
+  <div class="glass p-3 mb-4 flex items-center gap-3" id="cr-pulse-hint">
+    <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style="background:rgba(239,68,68,.15)">
+      <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"/></svg>
+    </div>
+    <div>
+      <div class="text-white font-bold text-xs" id="cr-pulse-text">Целевой пульс: 120–135 уд/мин</div>
+      <div class="text-gray-500 text-[11px]">Не держись за поручни, держи осанку</div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="grid grid-cols-2 gap-3 mt-auto">
+    <button onclick="cardioTogglePause()" class="btn-ghost flex items-center justify-center gap-2 py-4" id="cr-btn-pause">
+      <svg class="w-5 h-5" id="cr-pause-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5"/></svg>
+      <span id="cr-pause-text">Пауза</span>
+    </button>
+    <button onclick="cardioEarlyFinish()" class="btn-ghost flex items-center justify-center gap-2 py-4" style="border-color:rgba(239,68,68,.3);color:#F87171">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 7.5A2.25 2.25 0 017.5 5.25h9a2.25 2.25 0 012.25 2.25v9a2.25 2.25 0 01-2.25 2.25h-9a2.25 2.25 0 01-2.25-2.25v-9z"/></svg>
+      Завершить досрочно
+    </button>
+  </div>
+</section>
+
 <section id="workout-complete" class="section pt-10 text-center">
   <div class="mx-auto w-20 h-20 rounded-3xl bg-gradient-to-br from-purple to-pink flex items-center justify-center mb-4"><svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
   <h2 class="text-2xl font-black grad-text mb-2">Отличная работа!</h2>
@@ -646,10 +729,31 @@ function renderDayButtons() {
   const days = new Set(S.planData.exercises.map(e => e.day_number));
   
   days.forEach(d => {
+    // Check if this day is a cardio day (has cardio/conditioning exercises)
+    const dayExercises = S.planData.exercises.filter(e => e.day_number === d);
+    const isCardioDay = dayExercises.some(e => e.exercises && ['cardio','conditioning'].includes(e.exercises.movement_pattern));
+    
     let btn = document.createElement('button');
-    btn.className = 'glass p-4 text-left card-hover';
-    btn.innerHTML = `<div class="text-purple font-bold uppercase text-xs mb-1">${dayLabelText(d)}</div><div class="text-white font-bold">Начать</div>`;
-    btn.onclick = () => initReadiness(d);
+    if (isCardioDay) {
+      btn.className = 'glass p-4 text-left card-hover col-span-2';
+      btn.style.borderLeft = '4px solid #F59E0B';
+      btn.innerHTML = `
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background:linear-gradient(135deg,rgba(245,158,11,.2),rgba(239,68,68,.2))">
+            <svg class="w-5 h-5" style="color:#F59E0B" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 6.75 6.75 0 009 18.75a6.768 6.768 0 006.362-13.536z"/></svg>
+          </div>
+          <div class="flex-1">
+            <div class="font-bold uppercase text-xs mb-0.5" style="color:#F59E0B">⚡ Кардио-день</div>
+            <div class="text-white font-bold text-sm">Жиросжигание & Выносливость</div>
+            <div class="text-gray-500 text-[11px] mt-0.5">LISS 15м → EMOM MetCon 15м → Заминка 15м • ~45 мин</div>
+          </div>
+        </div>`;
+      btn.onclick = () => launchCardioRunner();
+    } else {
+      btn.className = 'glass p-4 text-left card-hover';
+      btn.innerHTML = `<div class="text-purple font-bold uppercase text-xs mb-1">${dayLabelText(d)}</div><div class="text-white font-bold">Начать</div>`;
+      btn.onclick = () => initReadiness(d);
+    }
     cont.appendChild(btn);
   });
 }
@@ -1159,6 +1263,311 @@ showSection = function(id) {
   if (id === 'pullup-plan') renderPullupPlan();
   if (id === 'plan-select') loadPlans();
 };
+
+// ================================================================
+// CARDIO RUNNER MODULE — LISS → EMOM MetCon → LISS Flush
+// ================================================================
+const CR = {
+  phase: 0,        // 0=idle, 1=LISS entry, 2=EMOM, 3=LISS flush
+  paused: false,
+  startedAt: 0,    // Date.now() when phase started
+  pausedAt: 0,     // accumulated pause time
+  pauseStart: 0,
+  phaseEndMs: 0,   // target end timestamp
+  globalStartedAt: 0,
+  emomRound: 1,    // 1-3
+  emomStation: 1,  // 1-5 within each round
+  emomMinute: 1,   // 1-15 global minute
+  tickId: null,
+  audioCtx: null,
+  completedRounds: 0,
+};
+
+const EMOM_STATIONS = [
+  { name: '18 Махов гирей', reps: '18 повторений', icon: '🏋️', kg: '16–20 кг' },
+  { name: '15 Отжиманий от пола', reps: '15 повторений', icon: '💪', kg: '' },
+  { name: '14 Кубковых приседаний', reps: '14 повторений', icon: '🦵', kg: '12–16 кг' },
+  { name: '35сек Скалолаз', reps: '35 секунд', icon: '🧗', kg: '' },
+  { name: 'Отдых и восстановление', reps: '60 секунд', icon: '😮‍💨', kg: '' },
+];
+
+const PHASE_DURATIONS = [
+  0,           // phase 0 unused
+  15 * 60,     // phase 1: LISS 15 min
+  15 * 60,     // phase 2: EMOM 15 min (3 rounds × 5 min)
+  15 * 60,     // phase 3: LISS flush 15 min
+];
+
+function crInitAudio() {
+  // AudioContext must be created inside user gesture for Safari
+  if (!CR.audioCtx) {
+    CR.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (CR.audioCtx.state === 'suspended') CR.audioCtx.resume();
+}
+
+function crBeep(freq, durationMs) {
+  if (!CR.audioCtx) return;
+  try {
+    const osc = CR.audioCtx.createOscillator();
+    const gain = CR.audioCtx.createGain();
+    osc.frequency.value = freq;
+    osc.type = 'square';
+    gain.gain.setValueAtTime(0.15, CR.audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, CR.audioCtx.currentTime + durationMs / 1000);
+    osc.connect(gain);
+    gain.connect(CR.audioCtx.destination);
+    osc.start();
+    osc.stop(CR.audioCtx.currentTime + durationMs / 1000);
+  } catch(e) { /* silently fail */ }
+}
+
+function crBeepStart()  { crBeep(880, 400); try { navigator.vibrate && navigator.vibrate([200,80,200]); } catch{} }
+function crBeepTick()   { crBeep(660, 150); try { navigator.vibrate && navigator.vibrate(80); } catch{} }
+function crBeepFinish() { crBeep(440, 600); crBeep(880, 600); try { navigator.vibrate && navigator.vibrate([300,100,300,100,300]); } catch{} }
+
+function crFormatTime(totalSec) {
+  if (totalSec < 0) totalSec = 0;
+  const m = Math.floor(totalSec / 60).toString().padStart(2, '0');
+  const s = Math.floor(totalSec % 60).toString().padStart(2, '0');
+  return m + ':' + s;
+}
+
+function launchCardioRunner() {
+  if (!S.userId) return alert('Сначала выбери профиль');
+  crInitAudio(); // user gesture — unlock audio
+  CR.phase = 1;
+  CR.paused = false;
+  CR.pausedAt = 0;
+  CR.pauseStart = 0;
+  CR.emomRound = 1;
+  CR.emomStation = 1;
+  CR.emomMinute = 1;
+  CR.completedRounds = 0;
+  CR.globalStartedAt = Date.now();
+  crStartPhase(1);
+  showSection('cardio-runner');
+}
+
+function crStartPhase(phaseNum) {
+  CR.phase = phaseNum;
+  CR.startedAt = Date.now();
+  CR.pausedAt = 0;
+  CR.pauseStart = 0;
+  CR.paused = false;
+  const dur = PHASE_DURATIONS[phaseNum];
+  CR.phaseEndMs = CR.startedAt + dur * 1000;
+
+  // Update phase segments
+  for (let i = 1; i <= 3; i++) {
+    const seg = document.getElementById('cr-seg-' + i);
+    if (!seg) continue;
+    seg.classList.remove('active', 'done');
+    if (i < phaseNum) seg.classList.add('done');
+    else if (i === phaseNum) seg.classList.add('active');
+  }
+
+  const phaseLabel = document.getElementById('cr-phase-text');
+  const mainTimer = document.getElementById('cr-main-timer');
+  const hint = document.getElementById('cr-hint');
+  const emomPanel = document.getElementById('cr-emom-panel');
+  const pulseHint = document.getElementById('cr-pulse-hint');
+  const pulseText = document.getElementById('cr-pulse-text');
+  const phaseLabelBox = document.getElementById('cr-phase-label');
+
+  if (phaseNum === 1) {
+    if (phaseLabel) phaseLabel.textContent = 'Фаза 1: LISS Вход';
+    if (hint) hint.textContent = 'Ходьба в гору: уклон 8–10%, скорость 4.8–5.2 км/ч';
+    if (emomPanel) emomPanel.classList.add('hidden');
+    if (pulseHint) pulseHint.classList.remove('hidden');
+    if (pulseText) pulseText.textContent = 'Целевой пульс: 120–135 уд/мин';
+    if (phaseLabelBox) phaseLabelBox.style.background = 'rgba(139,92,246,.15)';
+    if (mainTimer) { mainTimer.classList.remove('hidden'); mainTimer.textContent = crFormatTime(dur); }
+    crBeepStart();
+  } else if (phaseNum === 2) {
+    CR.emomRound = 1;
+    CR.emomStation = 1;
+    CR.emomMinute = 1;
+    if (phaseLabel) phaseLabel.textContent = 'Фаза 2: EMOM MetCon';
+    if (mainTimer) mainTimer.classList.add('hidden');
+    if (emomPanel) emomPanel.classList.remove('hidden');
+    if (pulseHint) pulseHint.classList.remove('hidden');
+    if (pulseText) pulseText.textContent = 'Целевой пульс: 150–170 уд/мин';
+    if (hint) hint.textContent = 'Работай в начале минуты, остаток — отдых';
+    if (phaseLabelBox) phaseLabelBox.style.background = 'rgba(239,68,68,.15)';
+    crUpdateEMOMDisplay();
+    crBeepStart();
+  } else if (phaseNum === 3) {
+    if (phaseLabel) phaseLabel.textContent = 'Фаза 3: LISS Заминка';
+    if (hint) hint.textContent = 'Велотренажер / эллипсоид: 70–80 RPM в ровном темпе';
+    if (emomPanel) emomPanel.classList.add('hidden');
+    if (pulseHint) pulseHint.classList.remove('hidden');
+    if (pulseText) pulseText.textContent = 'Целевой пульс: 110–125 уд/мин';
+    if (phaseLabelBox) phaseLabelBox.style.background = 'rgba(34,197,94,.15)';
+    if (mainTimer) { mainTimer.classList.remove('hidden'); mainTimer.textContent = crFormatTime(dur); }
+    crBeepStart();
+  }
+
+  // Start tick loop
+  if (CR.tickId) clearInterval(CR.tickId);
+  CR.tickId = setInterval(crTick, 250);
+}
+
+function crTick() {
+  if (CR.paused || CR.phase === 0) return;
+  const now = Date.now();
+  const elapsed = (now - CR.startedAt - CR.pausedAt) / 1000;
+  const phaseDur = PHASE_DURATIONS[CR.phase];
+  const remaining = phaseDur - elapsed;
+
+  // Total elapsed
+  const totalEl = document.getElementById('cr-total-elapsed');
+  if (totalEl) {
+    const globalElapsed = (now - CR.globalStartedAt) / 1000;
+    totalEl.textContent = crFormatTime(globalElapsed);
+  }
+
+  if (CR.phase === 1 || CR.phase === 3) {
+    // Simple countdown
+    const mainTimer = document.getElementById('cr-main-timer');
+    if (mainTimer) mainTimer.textContent = crFormatTime(remaining);
+
+    if (remaining <= 0) {
+      clearInterval(CR.tickId);
+      CR.tickId = null;
+      if (CR.phase === 1) {
+        crStartPhase(2);
+      } else {
+        crFinishSession();
+      }
+    }
+  } else if (CR.phase === 2) {
+    // EMOM logic: each minute is a station
+    const minuteElapsed = elapsed % 60;  // seconds within current minute
+    const minuteRemaining = 60 - minuteElapsed;
+    const currentGlobalMinute = Math.floor(elapsed / 60) + 1;
+
+    // Update EMOM display
+    const emomTimer = document.getElementById('cr-emom-timer');
+    if (emomTimer) emomTimer.textContent = crFormatTime(minuteRemaining);
+
+    // 3-2-1 countdown beeps
+    const secLeft = Math.ceil(minuteRemaining);
+    if (secLeft === 3 || secLeft === 2 || secLeft === 1) {
+      // Only beep once per second (check fractional)
+      if (minuteRemaining - secLeft > -0.3 && minuteRemaining - secLeft < 0.05) {
+        crBeepTick();
+      }
+    }
+
+    // Check minute transition
+    if (currentGlobalMinute !== CR.emomMinute && currentGlobalMinute <= 15) {
+      CR.emomMinute = currentGlobalMinute;
+      CR.emomStation = ((currentGlobalMinute - 1) % 5) + 1;
+      CR.emomRound = Math.floor((currentGlobalMinute - 1) / 5) + 1;
+      crUpdateEMOMDisplay();
+      crBeepStart();
+    }
+
+    // Track completed rounds
+    CR.completedRounds = Math.min(3, Math.floor(elapsed / 300)); // 300s = 5min = 1 round
+
+    if (remaining <= 0) {
+      CR.completedRounds = 3;
+      clearInterval(CR.tickId);
+      CR.tickId = null;
+      crStartPhase(3);
+    }
+  }
+}
+
+function crUpdateEMOMDisplay() {
+  const station = EMOM_STATIONS[CR.emomStation - 1];
+  const stationEl = document.getElementById('cr-emom-station');
+  const roundEl = document.getElementById('cr-emom-round');
+  const stationNumEl = document.getElementById('cr-emom-station-num');
+  const minuteNumEl = document.getElementById('cr-emom-minute-num');
+
+  if (stationEl) {
+    stationEl.textContent = station.icon + ' МИНУТА ' + CR.emomMinute + ': ' + station.name;
+    // Flash animation
+    stationEl.classList.remove('cr-flash');
+    void stationEl.offsetWidth; // reflow
+    stationEl.classList.add('cr-flash');
+  }
+  if (roundEl) roundEl.textContent = 'Раунд ' + CR.emomRound + ' / 3';
+  if (stationNumEl) stationNumEl.textContent = CR.emomStation;
+  if (minuteNumEl) minuteNumEl.textContent = CR.emomMinute;
+}
+
+function cardioTogglePause() {
+  const pauseText = document.getElementById('cr-pause-text');
+  const pauseIcon = document.getElementById('cr-pause-icon');
+  if (!CR.paused) {
+    CR.paused = true;
+    CR.pauseStart = Date.now();
+    if (pauseText) pauseText.textContent = 'Продолжить';
+    if (pauseIcon) pauseIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"/>';
+  } else {
+    CR.pausedAt += Date.now() - CR.pauseStart;
+    CR.paused = false;
+    if (pauseText) pauseText.textContent = 'Пауза';
+    if (pauseIcon) pauseIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5"/>';
+  }
+}
+
+function cardioEarlyFinish() {
+  if (CR.phase === 0) return showSection('dashboard');
+  if (!confirm('Завершить кардио-сессию досрочно?')) return;
+  crFinishSession();
+}
+
+async function crFinishSession() {
+  if (CR.tickId) { clearInterval(CR.tickId); CR.tickId = null; }
+  crBeepFinish();
+  CR.phase = 0;
+
+  // Mark all segments done
+  for (let i = 1; i <= 3; i++) {
+    const seg = document.getElementById('cr-seg-' + i);
+    if (seg) { seg.classList.remove('active'); seg.classList.add('done'); }
+  }
+
+  const totalMinutes = Math.round((Date.now() - CR.globalStartedAt) / 60000);
+
+  // POST to backend
+  try {
+    const res = await api('/api/workouts/cardio-complete', {
+      method: 'POST',
+      body: JSON.stringify({
+        user_id: S.userId,
+        plan_id: S.user?.current_plan_id || null,
+        total_duration_minutes: totalMinutes,
+        emom_rounds_completed: CR.completedRounds || 0,
+        perceived_effort_rpe: 8,
+        notes: 'LISS ' + Math.min(15, totalMinutes) + 'м + EMOM ' + (CR.completedRounds || 0) + '/3 + Flush'
+      })
+    });
+    const pCont = document.getElementById('progression-results');
+    if (pCont) {
+      pCont.innerHTML = `
+        <div class="glass p-4 text-center" style="border-left:4px solid #F59E0B">
+          <div class="text-2xl mb-2">🔥</div>
+          <div class="text-white font-bold">Кардио-сессия завершена!</div>
+          <div class="text-gray-400 text-sm mt-2">${totalMinutes} мин • EMOM ${CR.completedRounds}/3 раундов</div>
+          <div class="text-gray-500 text-xs mt-1">${res.message || ''}</div>
+        </div>`;
+    }
+    const stats = document.getElementById('complete-stats');
+    if (stats) stats.textContent = 'Гибридное кардио: ' + totalMinutes + ' мин';
+  } catch(e) {
+    console.error('cardio-complete failed:', e);
+    const pCont = document.getElementById('progression-results');
+    if (pCont) pCont.innerHTML = `<div class="glass p-3 text-center"><div class="text-white font-bold">Кардио завершено! (${totalMinutes} мин)</div><div class="text-gray-500 text-xs mt-1">Данные не сохранены: ${e.message}</div></div>`;
+  }
+
+  showSection('workout-complete');
+}
 
 if(localStorage.getItem('ag_uid')) selectProfile(normalizeUid(localStorage.getItem('ag_uid')));
 else showSection('profile-select');

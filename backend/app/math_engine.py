@@ -8,6 +8,8 @@ def round_to_plate(x: float) -> float:
 
 def warmup_sets(working_weight: float, equipment: str = "barbell") -> list[dict]:
     """3 разминки: 40%x8, 60%x5, 80%x2 if working_weight >=40 else []"""
+    if working_weight is None or working_weight <= 0:
+        return []
     if equipment not in ("barbell","dumbbell") or working_weight < 40:
         return []
     percents = [(0.4,8),(0.6,5),(0.8,2)]
@@ -19,7 +21,9 @@ def warmup_sets(working_weight: float, equipment: str = "barbell") -> list[dict]
     return out
 
 def epley_e1rm(weight: float, reps: int) -> float:
-    if reps <= 0: return round(weight,2)
+    if weight is None or weight <= 0:
+        return 0.0
+    if reps is None or reps <= 0: return round(weight,2)
     return round(weight * (1 + reps/30), 2)
 
 def plate_breakdown(total_weight: float, bar: float = OLYMPIC_BAR) -> dict:

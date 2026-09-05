@@ -7,9 +7,13 @@ def parse_target_reps(target: str) -> int:
     return int(nums[-1])
 
 def should_progress(reps: int, rir: int, target_reps: int, weight: float) -> bool:
+    if weight is None or reps is None or rir is None:
+        return False
     return weight>0 and rir>=1 and reps >= target_reps
 
 def next_weight(weight: float, mechanics: str, cns_load: int, target_muscle: str) -> float:
+    if weight is None or weight <= 0:
+        return weight or 0
     # isolation +1.25 else +2.5 ; heavy compounds +2.5..5
     is_iso = mechanics == "isolation" or (cns_load or 3) <= 2
     inc = 1.25 if is_iso else 2.5
@@ -18,6 +22,8 @@ def next_weight(weight: float, mechanics: str, cns_load: int, target_muscle: str
 
 def suggest_next_set(rir: int, reps: int, target_reps_str: str, weight: float, mechanics: str, cns_load: int, target_muscle: str) -> dict:
     """RIR-autoregulation [10] per spec"""
+    if weight is None or weight <= 0:
+        return {"action": "hold", "next_weight": 0, "next_reps": 0, "badge": "кардио / conditioning — без прогрессии веса"}
     tr = parse_target_reps(target_reps_str)
     is_iso = mechanics == "isolation" or (cns_load or 3) <= 2
     if rir >= 3:
