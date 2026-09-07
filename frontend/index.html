@@ -41,9 +41,9 @@ tailwind.config = { theme: { extend: { colors: { purple: '#8B5CF6', pink: '#EC48
 
 <!-- ===== Header ===== -->
 <header id="app-header" class="sticky top-0 z-40 glass !rounded-none !border-x-0 !border-t-0 px-4 py-3">
-  <div class="max-w-md mx-auto ag-header-inner">
-    <div class="font-black grad-text text-lg ag-brand">ANTIGRAVITY</div>
-    <nav class="ag-nav flex items-center gap-1 text-xs font-bold" aria-label="Основная навигация">
+  <div class="max-w-md mx-auto flex items-center justify-between">
+    <div class="font-black grad-text text-lg">ANTIGRAVITY</div>
+    <nav class="flex items-center gap-1 text-xs font-bold">
       <button type="button" onclick="showSection('dashboard')" class="px-3 py-1.5 rounded-lg bg-purple/15 text-purple">ТРЕНИРОВКИ</button>
       <button type="button" onclick="showSection('bench-calendar')" class="px-3 py-1.5 rounded-lg text-gray-400 hover:text-purple">ЖИМ-КАЛЕНДАРЬ</button>
       <button type="button" onclick="launchCardioRunner()" class="px-3 py-1.5 rounded-lg font-bold" style="color:#F59E0B;background:rgba(245,158,11,.12)">⚡ КАРДИО</button>

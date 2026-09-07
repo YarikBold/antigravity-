@@ -165,19 +165,31 @@ async def get_all_exercises():
 async def get_last_weights(user_id: str):
     sb=get_supabase()
     uid=LEGACY_ID_MAP.get(str(user_id), str(user_id))
-    candidates=[c for c in dict.fromkeys([uid, str(user_id)]) if c]
+    candidates=[uid, str(user_id)]
+    candidates=[c for c in dict.fromkeys(candidates) if c]
     for cand in candidates:
         try:
             logs=sb.table("workout_logs").select("id").eq("user_id", cand).order("date", desc=True).limit(20).execute().data
+            if logs:
+                latest={}
+                for log in logs:
+                    try: sets=sb.table("workout_sets").select("exercise_id, weight, reps, rir").eq("log_id", log["id"]).execute().data
+                    except: continue
+                    for s in sets:
+                        if s["exercise_id"] not in latest: latest[s["exercise_id"]]=s
+                if latest: return latest
+                return {}
+        except: pass
+    for cand in candidates:
+        try:
+            rows=sb.table("workout_logs").select("exercise_id, weight, reps, rir, date").eq("user_id", cand).order("date", desc=True).limit(200).execute().data
             latest={}
-            for log in logs:
-                sets=sb.table("workout_sets").select("exercise_id, weight, reps, rir").eq("log_id", log["id"]).execute().data
-                for row in sets:
-                    eid=str(row["exercise_id"])
-                    if eid not in latest:
-                        latest[eid]={"exercise_id": eid, "weight": row.get("weight"), "reps": row.get("reps"), "rir": row.get("rir")}
+            for r in rows:
+                eid=str(r["exercise_id"])
+                if eid not in latest: latest[eid]=r
             return latest
-        except Exception:
+        except Exception as e:
+            if "does not exist" in str(e) or "42703" in str(e): continue
             pass
     return {}
 

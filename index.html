@@ -74,35 +74,19 @@
     .cr-flash { animation: cr-flash .5s ease-in-out 3; }
     .cr-hint { font-size: 13px; color: #9CA3AF; line-height: 1.4; }
   </style>
-  <style>
-  .ag-header-inner{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
-  .ag-brand{flex:0 0 auto}
-  .ag-nav{min-width:0;display:flex;align-items:center;gap:4px;white-space:nowrap}
-  .ag-nav button{flex:0 0 auto;min-height:36px}
-  @media (max-width:700px){
-    #app-header{padding:8px 10px !important}
-    .ag-header-inner{display:block}
-    .ag-brand{display:block;font-size:15px;line-height:1;margin:1px 0 7px 2px}
-    .ag-nav{width:100%;justify-content:flex-start;flex-wrap:wrap;white-space:normal}
-    .ag-nav button{font-size:10px;padding:7px 9px;min-height:34px}
-    .ag-nav #header-user{display:none}
-  }
-</style>
 </head>
 <body>
 
 <header id="app-header" class="hidden sticky top-0 z-50 glass px-4 py-3" style="border-radius:0;border-top:none;border-left:none;border-right:none">
-  <div class="max-w-lg mx-auto ag-header-inner">
-    <h1 class="text-lg font-black tracking-tight grad-text ag-brand">ANTIGRAVITY</h1>
-    <div class="ag-nav flex items-center gap-1" aria-label="Основная навигация">
-      <button type="button" onclick="showSection('dashboard')" class="text-xs px-3 py-1.5 rounded-lg font-bold text-purple bg-purple/15">Тренировки</button>
-      <button type="button" onclick="showSection('bench-calendar')" class="text-xs px-3 py-1.5 rounded-lg font-bold text-gray-400">Жим-календарь</button>
-      <button type="button" onclick="launchCardioRunner()" class="text-xs px-3 py-1.5 rounded-lg font-bold flex items-center gap-1" style="background:linear-gradient(135deg,#F59E0B,#EF4444);color:#fff;border:none;cursor:pointer" title="Запустить кардио-сессию">
+  <div class="max-w-lg mx-auto flex items-center justify-between">
+    <h1 class="text-lg font-black tracking-tight grad-text">ANTIGRAVITY</h1>
+    <div class="flex items-center gap-3">
+      <button onclick="launchCardioRunner()" class="text-xs px-3 py-1.5 rounded-lg font-bold flex items-center gap-1" style="background:linear-gradient(135deg,#F59E0B,#EF4444);color:#fff;border:none;cursor:pointer" title="Запустить кардио-сессию">
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 6.75 6.75 0 009 18.75a6.768 6.768 0 006.362-13.536z"/></svg>
         Кардио
       </button>
       <span id="header-user" class="text-xs text-gray-400"></span>
-      <button type="button" onclick="logout()" class="text-gray-500 hover:text-white text-xs">Выйти</button>
+      <button onclick="logout()" class="text-gray-500 hover:text-white text-xs">Выйти</button>
     </div>
   </div>
 </header>
@@ -1029,10 +1013,10 @@ function renderExerciseCards() {
         <span class="text-xs">RIR</span>
         <input type="number" value="${s.rir !== '' ? s.rir : ''}" placeholder="${last ? last.rir : 2}" class="input-dark py-1 text-center" onchange="upd('${ex.exercise_id}',${i},'rir',this.value)">
         <select onchange="upd('${ex.exercise_id}',${i},'set_type',this.value)" class="input-dark py-1 text-center text-xs w-20"><option value="normal" ${s.set_type==='normal'?'selected':''}>norm</option><option value="drop_set" ${s.set_type==='drop_set'?'selected':''}>drop</option><option value="rest_pause" ${s.set_type==='rest_pause'?'selected':''}>rest</option><option value="pyramid" ${s.set_type==='pyramid'?'selected':''}>pyr</option></select>
-        <button type="button" aria-label="Отметить подход ${i+1}" onclick="done('${ex.exercise_id}',${i})" class="w-8 h-8 rounded bg-purple/20 text-purple flex items-center justify-center"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></button>
+        <button onclick="done('${ex.exercise_id}',${i})" class="w-8 h-8 rounded bg-purple/20 text-purple flex items-center justify-center"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></button>
       </div>`).join('');
       
-    cont.innerHTML += `<div class="glass p-4 border-l-4 border-purple workout-exercise-card"><div class="exercise-card-title text-white font-bold mb-2 flex flex-wrap items-center gap-1"><span class="exercise-name">${e.name}</span> <span class="text-xs text-gray-500 font-normal">(${ex.target_sets||ex.sets||3}×${repStr})</span>${methodBadge}<button type="button" onclick="swapExercise('${ex.exercise_id}')" class="swap-exercise-btn ml-auto text-[10px] px-2 py-1 rounded bg-white/10 text-purple border border-purple/20 hover:bg-purple/20">Тренажер занят → Заменить</button></div>${methodHint}${lastHint}<div id="plates-${ex.exercise_id}" class="flex flex-wrap gap-1 my-1"></div>${setsHTML}</div>`;
+    cont.innerHTML += `<div class="glass p-4 border-l-4 border-purple"><div class="text-white font-bold mb-2 flex flex-wrap items-center gap-1">${e.name} <span class="text-xs text-gray-500 font-normal">(${ex.target_sets||ex.sets||3}×${repStr})</span>${methodBadge}<button onclick="swapExercise('${ex.exercise_id}')" class="ml-auto text-[10px] px-2 py-1 rounded bg-white/10 text-purple border border-purple/20 hover:bg-purple/20">Тренажер занят → Заменить</button></div>${methodHint}${lastHint}<div id="plates-${ex.exercise_id}" class="flex flex-wrap gap-1 my-1"></div>${setsHTML}</div>`;
     setTimeout(()=>{ try{ const w=parseFloat(S.workoutSets[ex.exercise_id]?.[0]?.weight||0); if(w>=20 && typeof renderPlates==='function') renderPlates(w, 'plates-'+ex.exercise_id); }catch{} }, 0);
   });
   // показать баннер прогрессии если не скрыт
@@ -1110,10 +1094,8 @@ async function finishWorkout() {
   try {
     let res;
     try{
-      const workoutPlanId = S.user?.current_plan_id || null;
-      res = await api('/api/workouts/complete', { method: 'POST', body: JSON.stringify({ user_id: String(S.userId), plan_id: workoutPlanId, day_number: S.selectedDay, sets }) });
+      res = await api('/api/workouts/complete', { method: 'POST', body: JSON.stringify({ user_id: String(S.userId), plan_id: String(S.user.current_plan_id||''), day_number: S.selectedDay, sets }) });
     }catch(e){
-      if (!/^API 404\b/.test(e.message || '')) throw e;
       const legacySets = sets.map(s=>({exercise_id: s.exercise_id, set_number: s.set_number, weight: s.weight, reps: s.reps, rir: s.rir}));
       res = await api('/api/finish_workout', { method: 'POST', body: JSON.stringify({ user_id: S.userId, day_number: S.selectedDay, sets: legacySets }) });
     }

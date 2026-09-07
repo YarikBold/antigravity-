@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from typing import List, Literal, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -54,18 +54,6 @@ class LegacyFinishRequest(BaseModel):
     day_number: int
     sets: List[LegacySetLog]
 
-legacy_user_ids = {
-    "1": "11111111-1111-1111-1111-111111111111",
-    "2": "22222222-2222-2222-2222-222222222222",
-    "00000000-0000-0000-0000-000000000001": "11111111-1111-1111-1111-111111111111",
-    "00000000-0000-0000-0000-000000000002": "22222222-2222-2222-2222-222222222222",
-}
-
-
-def db_user_id(user_id: str) -> str:
-    return legacy_user_ids.get(str(user_id), str(user_id))
-
-
 def fetch_plan_exercise_meta(sb, plan_id, exercise_id):
     try:
         r = sb.table("plan_exercises").select("target_reps, exercises(mechanics, cns_load, target_muscle)").eq("plan_id", plan_id).eq("exercise_id", exercise_id).limit(1).execute()
@@ -100,52 +88,34 @@ async def suggest_next_set_endpoint(req: SuggestRequest):
 @router.post("/complete")
 async def complete_workout(req: CompleteRequest):
     sb = get_supabase()
-    db_uid = db_user_id(req.user_id)
     try:
         log_id = None
-        log_payload = {"user_id": db_uid, "date": str(date.today()), "completed": True}
-        if req.plan_id:
-            log_payload["plan_id"] = req.plan_id
         try:
-            ins = sb.table("workout_logs").insert(log_payload).execute()
+            ins = sb.table("workout_logs").insert({"user_id": req.user_id, "plan_id": req.plan_id, "date": str(date.today()), "completed": True}).execute()
             log_id = ins.data[0]["id"] if ins.data else None
-        except Exception as first_error:
-            # A stale/invalid plan id must not block a valid workout session.
-            try:
-                ins = sb.table("workout_logs").insert({
-                    "user_id": db_uid,
-                    "date": str(date.today()),
-                    "completed": True,
-                }).execute()
-                log_id = ins.data[0]["id"] if ins.data else None
-            except Exception as second_error:
-                raise HTTPException(500, f"Не удалось создать запись тренировки: {second_error}") from first_error
-
-        if not log_id:
-            raise HTTPException(500, "Не удалось создать запись тренировки. Проверьте user_id и схему workout_logs.")
-
+        except Exception:
+            log_id = None
         progressions=[]
         logged=0
         last_per_ex={}
         for s in req.sets:
             last_per_ex[s.exercise_id]=s
-            sb.table("workout_sets").insert({
-                "log_id": log_id,
-                "exercise_id": s.exercise_id,
-                "set_number": s.set_number,
-                "set_type": s.set_type,
-                "weight": s.weight,
-                "reps": s.reps,
-                "rir": s.rir,
-            }).execute()
-            logged += 1
+        for s in req.sets:
+            if log_id:
+                try:
+                    sb.table("workout_sets").insert({"log_id": log_id, "exercise_id": s.exercise_id, "set_number": s.set_number, "set_type": s.set_type, "weight": s.weight, "reps": s.reps, "rir": s.rir}).execute()
+                except Exception:
+                    sb.table("workout_logs").insert({"user_id": req.user_id, "exercise_id": s.exercise_id, "weight": s.weight, "reps": s.reps, "rir": s.rir, "date": datetime.utcnow().isoformat()}).execute()
+            else:
+                sb.table("workout_logs").insert({"user_id": req.user_id, "exercise_id": s.exercise_id, "weight": s.weight, "reps": s.reps, "rir": s.rir, "date": datetime.utcnow().isoformat()}).execute()
+            logged+=1
             # PR check e1RM — skip for cardio/conditioning sets with no weight
             try:
                 if s.weight and s.weight > 0 and s.reps and s.reps > 0:
                     e1rm = epley_e1rm(s.weight, s.reps)
-                    rec = sb.table("personal_records").select("e1rm").eq("user_id", db_uid).eq("exercise_id", s.exercise_id).limit(1).execute()
+                    rec = sb.table("personal_records").select("e1rm").eq("user_id", req.user_id).eq("exercise_id", s.exercise_id).limit(1).execute()
                     if not rec.data or e1rm > float(rec.data[0]["e1rm"]):
-                        sb.table("personal_records").upsert({"user_id": db_uid, "exercise_id": s.exercise_id, "e1rm": e1rm, "weight": s.weight, "reps": s.reps, "date": str(date.today())}, on_conflict="user_id,exercise_id").execute()
+                        sb.table("personal_records").upsert({"user_id": req.user_id, "exercise_id": s.exercise_id, "e1rm": e1rm, "weight": s.weight, "reps": s.reps, "date": str(date.today())}, on_conflict="user_id,exercise_id").execute()
             except Exception:
                 pass
         for eid, last_set in last_per_ex.items():
@@ -176,6 +146,7 @@ async def cardio_complete(req: CardioCompleteRequest):
     try:
         log_data = {
             "user_id": req.user_id,
+            "plan_id": req.plan_id,
             "date": str(date.today()),
             "completed": True,
             "session_type": "cardio",
@@ -183,13 +154,7 @@ async def cardio_complete(req: CardioCompleteRequest):
             "perceived_effort_rpe": req.perceived_effort_rpe,
             "notes": req.notes or f"LISS+EMOM({req.emom_rounds_completed}r)+LISS Flush"
         }
-        if req.plan_id:
-            log_data["plan_id"] = req.plan_id
-        try:
-            ins = sb.table("workout_logs").insert(log_data).execute()
-        except Exception:
-            log_data.pop("plan_id", None)
-            ins = sb.table("workout_logs").insert(log_data).execute()
+        ins = sb.table("workout_logs").insert(log_data).execute()
         log_id = ins.data[0]["id"] if ins.data else None
         return {
             "status": "ok",

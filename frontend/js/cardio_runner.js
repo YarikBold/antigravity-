@@ -183,7 +183,7 @@ async function crSave(){
   const minutes = Math.max(1, Math.round((Date.now() - cr.phaseStart)/60000));
   const payload = {
     user_id: String(S.userId),
-    plan_id: S.user?.current_plan_id || null,
+    plan_id: String(S.user.current_plan_id || ''),
     duration_minutes: 45,
     stations_done: [
       { name: 'LISS Разгон', minutes: 15 },
