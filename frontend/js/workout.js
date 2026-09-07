@@ -84,12 +84,12 @@ function renderExerciseCards() {
         <span class="text-xs">RIR</span>
         <input type="number" value="${s.rir !== '' ? s.rir : ''}" placeholder="${last ? last.rir : 2}" class="input-dark py-1 text-center w-12" onchange="upd('${ex.exercise_id}',${i},'rir',this.value)">
         <select onchange="upd('${ex.exercise_id}',${i},'set_type',this.value)" class="input-dark py-1 text-center text-xs w-20"><option value="normal" ${s.set_type==='normal'?'selected':''}>norm</option><option value="drop_set" ${s.set_type==='drop_set'?'selected':''}>drop</option><option value="rest_pause" ${s.set_type==='rest_pause'?'selected':''}>rest</option><option value="pyramid" ${s.set_type==='pyramid'?'selected':''}>pyr</option></select>
-        <button onclick="done('${ex.exercise_id}',${i})" class="w-8 h-8 rounded bg-purple/20 text-purple flex items-center justify-center"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></button>
+        <button type="button" aria-label="Отметить подход ${i+1}" onclick="done('${ex.exercise_id}',${i})" class="w-8 h-8 rounded bg-purple/20 text-purple flex items-center justify-center"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></button>
         ${hint}
       </div>`;
     }).join('');
 
-    cont.innerHTML += `<div class="glass p-4 border-l-4 border-purple"><div class="text-white font-bold mb-2 flex flex-wrap items-center gap-1">${e.name} <span class="text-xs text-gray-500 font-normal">(${ex.target_sets||ex.sets||3}×${repStr})</span>${methodBadge}<button onclick="swapExercise('${ex.exercise_id}')" class="ml-auto text-[10px] px-2 py-1 rounded bg-white/10 text-purple border border-purple/20 hover:bg-purple/20">Тренажер занят → Заменить</button></div>${methodHint}${lastHint}<div id="plates-${ex.exercise_id}" class="flex flex-wrap gap-1 my-1"></div>${setsHTML}</div>`;
+    cont.innerHTML += `<div class="glass p-4 border-l-4 border-purple workout-exercise-card"><div class="exercise-card-title text-white font-bold mb-2 flex flex-wrap items-center gap-1"><span class="exercise-name">${e.name}</span> <span class="text-xs text-gray-500 font-normal">(${ex.target_sets||ex.sets||3}×${repStr})</span>${methodBadge}<button type="button" onclick="swapExercise('${ex.exercise_id}')" class="swap-exercise-btn ml-auto text-[10px] px-2 py-1 rounded bg-white/10 text-purple border border-purple/20 hover:bg-purple/20">Тренажер занят → Заменить</button></div>${methodHint}${lastHint}<div id="plates-${ex.exercise_id}" class="flex flex-wrap gap-1 my-1"></div>${setsHTML}</div>`;
     setTimeout(()=>{ try{ const w=parseFloat(S.workoutSets[ex.exercise_id]?.[0]?.weight||0); if(w>=20 && typeof renderPlates==='function') renderPlates(w, 'plates-'+ex.exercise_id); }catch{} }, 0);
   });
   const hint = document.getElementById('progression-hint');
@@ -129,9 +129,10 @@ function localSuggest(rir, reps, repStr, weight, mechanics){
 // RIR-авторегуляция: расчёт веса следующего подхода на лету через /api/workouts/suggest-next-set
 async function suggestNextSet(ex, doneSet){
   const repStr = ex.target_reps || ex.reps_target || '8-12';
+  const planId = S.user?.current_plan_id || null;
   const payload = {
     exercise_id: String(ex.exercise_id),
-    plan_id: String(S.user.current_plan_id || ''),
+    plan_id: planId,
     weight: Number(doneSet.weight),
     reps: Number(doneSet.reps),
     rir: Number(doneSet.rir),
@@ -211,8 +212,10 @@ async function finishWorkout() {
   try {
     let res;
     try{
-      res = await api('/api/workouts/complete', { method: 'POST', body: JSON.stringify({ user_id: String(S.userId), plan_id: String(S.user.current_plan_id||''), day_number: S.selectedDay, sets }) });
+      const workoutPlanId = S.user?.current_plan_id || null;
+      res = await api('/api/workouts/complete', { method: 'POST', body: JSON.stringify({ user_id: String(S.userId), plan_id: workoutPlanId, day_number: S.selectedDay, sets }) });
     }catch(e){
+      if (!/^API 404\b/.test(e.message || '')) throw e;
       const legacySets = sets.map(s=>({exercise_id: s.exercise_id, set_number: s.set_number, weight: s.weight, reps: s.reps, rir: s.rir}));
       res = await api('/api/finish_workout', { method: 'POST', body: JSON.stringify({ user_id: S.userId, day_number: S.selectedDay, sets: legacySets }) });
     }
