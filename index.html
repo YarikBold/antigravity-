@@ -509,7 +509,7 @@ async function api(path, opts={}) {
     let detail = '';
     try { const j = await r.json(); let d = j.detail || j.message || j; detail = (typeof d === 'string') ? d : JSON.stringify(d); } catch {}
     try { if(!detail) detail = await r.text(); } catch {}
-    throw new Error('API ' + r.status + (detail ? ': ' + detail : ''));
+    throw new Error('API ' + r.status + ' ' + path + (detail ? ': ' + detail : ''));
   }
   return r.json();
 }
@@ -548,7 +548,22 @@ async function loadDashboard() {
   if (headerUser) headerUser.textContent = S.user.name;
   if (pullupGuide) pullupGuide.classList.toggle('hidden', String(S.user.id) !== '11111111-1111-1111-1111-111111111111' && String(S.user.id) !== '1');
 
-  S.planData = await api('/api/plan/' + S.user.current_plan_id);
+  let planId = S.user.current_plan_id;
+  if (!planId || planId === 'undefined' || planId === 'null') {
+    try {
+      const ap = await api('/api/workouts/active-plan/' + S.userId);
+      planId = ap && (ap.id || ap.plan_id);
+      if (planId) S.user.current_plan_id = planId;
+    } catch(e) { console.warn('active-plan fallback failed', e); }
+  }
+  if (!planId || planId === 'undefined' || planId === 'null') {
+    throw new Error('У юзера нет плана (current_plan_id пустой). Открой /api/debug — проверь users/workout_plans в Supabase, прогони database/seed.sql.');
+  }
+  try {
+    S.planData = await api('/api/plan/' + planId);
+  } catch(e) {
+    throw new Error('План ' + planId + ' не найден. ' + e.message + ' Проверь /api/debug.');
+  }
   if (dashPlanName) dashPlanName.textContent = S.planData.plan.name;
   if (dashPlanDesc) dashPlanDesc.textContent = S.planData.plan.description;
   

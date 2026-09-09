@@ -51,15 +51,29 @@ LEGACY_ID_MAP = {"1":"11111111-1111-1111-1111-111111111111","2":"22222222-2222-2
 UUID_TO_LEGACY = {v:k for k,v in LEGACY_ID_MAP.items()}
 DEFAULT_SCHEDULE = {"11111111-1111-1111-1111-111111111111":[1,3,5],"22222222-2222-2222-2222-222222222222":[1,2,4,5],"00000000-0000-0000-0000-000000000001":[1,3,5],"00000000-0000-0000-0000-000000000002":[1,2,4,5]}
 
+def _resolve_plan_for_user(sb, uid: str):
+    """Return a valid plan id for user: target_user_id -> user's current_plan link -> any plan -> None."""
+    try:
+        r=sb.table("workout_plans").select("id").eq("target_user_id", uid).limit(1).execute()
+        if r.data: return r.data[0]["id"]
+    except: pass
+    try:
+        r=sb.table("workout_plans").select("id").limit(1).execute()
+        if r.data: return r.data[0]["id"]
+    except: pass
+    return None
+
 def _enrich_user(row: dict) -> dict:
     if not row: return row
     uid=str(row.get("id"))
     if "current_plan_id" not in row or row.get("current_plan_id") is None:
         try:
             sb=get_supabase()
-            r=sb.table("workout_plans").select("id").eq("target_user_id", uid).limit(1).execute()
-            if r.data: row["current_plan_id"]=r.data[0]["id"]
-            else: row["current_plan_id"]="33333333-3333-3333-3333-333333333333" if uid.startswith("111") or uid.startswith("00000000-0000") and "001" in uid else "44444444-4444-4444-4444-444444444444"
+            pid=_resolve_plan_for_user(sb, uid)
+            if pid: row["current_plan_id"]=pid
+            else:
+                is_yarik = uid.startswith("111") or (uid.startswith("00000000-0000") and "001" in uid)
+                row["current_plan_id"]="33333333-3333-3333-3333-333333333333" if is_yarik else "44444444-4444-4444-4444-444444444444"
         except: row["current_plan_id"]=row.get("current_plan_id") or "33333333-3333-3333-3333-333333333333"
     if "schedule" not in row or row.get("schedule") is None:
         row["schedule"]=DEFAULT_SCHEDULE.get(uid,[1,3,5])
@@ -133,7 +147,7 @@ async def get_plan(plan_id: str):
         if not plan.data:
             try: plan=sb.table("workout_plans").select("*").eq("id", int(plan_id)).execute()
             except: pass
-        if not plan.data: raise HTTPException(404, "Plan not found")
+        if not plan.data: raise HTTPException(404, f"Plan not found: {plan_id} — проверь seed.sql (plans 333/444) и current_plan_id юзера")
         exercises=sb.table("plan_exercises").select("*, exercises(*)").eq("plan_id", plan_id).order("order_index").execute()
         if not exercises.data:
             exercises=sb.table("plan_exercises").select("*, exercises(*)").eq("plan_id", plan_id).order("day_number").execute()
@@ -210,6 +224,29 @@ async def update_user_plan(user_id: str, req: UpdatePlanRequest):
         if not r.data: r=sb.table("users").update({"current_plan_id": req.plan_id}).eq("id", int(user_id)).execute()
         return {"status":"ok","data":r.data}
     except: return {"status":"ok"}
+
+@app.get("/api/debug")
+async def debug():
+    """Диагностика без фронта: что видит бэкенд в Supabase. Открыть /api/debug в браузере."""
+    try:
+        from app.config import SUPABASE_URL
+    except ModuleNotFoundError:
+        from backend.app.config import SUPABASE_URL
+    out={"supabase_configured": bool(SUPABASE_URL), "supabase_url_prefix": (SUPABASE_URL[:24]+"...") if SUPABASE_URL else None}
+    try:
+        sb=get_supabase()
+    except Exception as e:
+        out["error"]=str(e)
+        return out
+    for tbl in ["users","workout_plans","exercises","plan_exercises"]:
+        try:
+            r=sb.table(tbl).select("id").limit(5).execute()
+            out[tbl]=len(r.data or [])
+            if tbl=="users": out["user_ids"]=[x["id"] for x in (r.data or [])]
+            if tbl=="workout_plans": out["plan_ids"]=[x["id"] for x in (r.data or [])]
+        except Exception as e:
+            out[tbl]=f"ERR: {e}"
+    return out
 
 FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
 ROOT_INDEX = Path(__file__).parent.parent / "index.html"
