@@ -84,7 +84,7 @@ function renderExerciseCards() {
         <span class="set-rir-label">RIR</span>
         <input type="number" inputmode="numeric" min="0" max="5" value="${s.rir !== '' ? s.rir : ''}" placeholder="${last ? last.rir : 2}" class="input-dark" onchange="upd('${ex.exercise_id}',${i},'rir',this.value)">
         <select onchange="upd('${ex.exercise_id}',${i},'set_type',this.value)" class="input-dark"><option value="normal" ${s.set_type==='normal'?'selected':''}>norm</option><option value="drop_set" ${s.set_type==='drop_set'?'selected':''}>drop</option><option value="rest_pause" ${s.set_type==='rest_pause'?'selected':''}>rest</option><option value="pyramid" ${s.set_type==='pyramid'?'selected':''}>pyr</option></select>
-        <button onclick="done('${ex.exercise_id}',${i})" title="${s.done?'Отменить подход — вернуть на перезапись':'Завершить подход'}" class="set-done rounded ${s.done?'!bg-red-500/15 !text-red-400':'bg-purple/20 text-purple'} flex items-center justify-center">${s.done?'<span class="text-base font-black">↩</span>':'<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>'}</button>
+        <button type="button" onclick="done('${ex.exercise_id}',${i})" title="${s.done?'Отменить подход — вернуть на перезапись':'Завершить подход'}" class="set-done rounded ${s.done?'!bg-red-500/15 !text-red-400':'bg-purple/20 text-purple'} flex items-center justify-center" ${s.done?'style="background:rgba(239,68,68,.15) !important;color:#F87171 !important"':''}>${s.done?'<span class="text-base font-black">↩</span>':'<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>'}</button>
         ${hint}
       </div>`;
     }).join('');
@@ -149,16 +149,17 @@ async function suggestNextSet(ex, doneSet){
 }
 
 window.done = async (eid, idx) => {
+  try{
   let s = S.workoutSets[eid]?.[idx];
   if(!s) return alert('Ошибка: подход не найден');
   // Повторный клик по завершённому — отмена для перезаписи
   if(s.done){
     s.done = false;
-    delete S.setHints[String(eid)+':'+idx];
+    try{ delete S.setHints[String(eid)+':'+idx]; }catch{}
     renderExerciseCards();
     return;
   }
-  if(s.weight === '' || s.weight === undefined || s.reps === '' || s.reps === undefined || s.reps <= 0) return alert('Введи вес и повторения (>0)');
+  if(s.weight === '' || s.weight === undefined || s.reps === '' || s.reps === undefined || Number(s.reps) <= 0) return alert('Введи вес и повторения (>0)');
   s.done = true;
 
   const ex = S.dayExercises.find(x=>String(x.exercise_id)===String(eid));
@@ -177,6 +178,7 @@ window.done = async (eid, idx) => {
   renderExerciseCards();
   // Динамический отдых: RIR-sensitive (изоляция 60-90с, база RIR<=1 180с / RIR>=2 120с)
   startRestTimer(null, Number(s.rir), mechanics);
+  }catch(err){ console.error('done failed', err); alert('Ошибка: ' + (err && err.message || err)); }
 };
 
 async function swapExercise(exerciseId){
