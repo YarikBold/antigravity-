@@ -20,6 +20,7 @@ function startWorkout() {
     });
     const dayLabel = document.getElementById('workout-day-label');
     if (dayLabel) dayLabel.textContent = dayLabelText(S.selectedDay);
+    S.has_completed_finisher = false;
     renderWorkoutBadge();
     renderExerciseCards();
     resetTimer();
@@ -196,6 +197,78 @@ async function swapExercise(exerciseId){
   }catch(e){ alert('Замена: '+e.message); } finally{ if(btn) btn.textContent=old||'Тренажер занят → Заменить'; }
 }
 
+// --- Smart Finish Interceptor: финишер выполнен? иначе шторка-предложение ---
+function interceptFinish(){
+  if (S.has_completed_finisher) { finishWorkout(); return; }
+  const m = document.getElementById('finisher-modal');
+  if (!m) { finishWorkout(); return; }
+  m.classList.remove('hidden'); m.classList.add('flex');
+}
+function chooseFinisher(){
+  const m = document.getElementById('finisher-modal');
+  if (m) { m.classList.add('hidden'); m.classList.remove('flex'); }
+  const blk = document.getElementById('finisher-block');
+  if (blk) {
+    blk.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    blk.style.borderColor = 'rgba(236,72,153,.6)';
+    blk.style.boxShadow = '0 0 24px rgba(236,72,153,.35)';
+    setTimeout(() => { blk.style.boxShadow = ''; }, 2500);
+  }
+}
+function finishWithoutFinisher(){
+  const m = document.getElementById('finisher-modal');
+  if (m) { m.classList.add('hidden'); m.classList.remove('flex'); }
+  finishWorkout();
+}
+
+// --- Экран триумфа: тоннаж + дельта + PR + карточки по упражнениям ---
+function renderSummary(res, sets){
+  const tonEl = document.getElementById('complete-tonnage');
+  const dEl = document.getElementById('complete-delta');
+  const prEl = document.getElementById('complete-prs');
+  const stats = document.getElementById('complete-stats');
+  const ton = Number(res.session_tonnage ?? sets.reduce((a, s) => a + (Number(s.weight) || 0) * (Number(s.reps) || 0), 0));
+  if (tonEl) tonEl.textContent = ton.toLocaleString('ru-RU') + ' кг';
+  if (dEl) {
+    const d = (res.tonnage_delta === null || res.tonnage_delta === undefined) ? null : Number(res.tonnage_delta);
+    if (d === null || isNaN(d)) { dEl.textContent = '—'; dEl.style.color = '#9CA3AF'; }
+    else if (d > 0) { dEl.textContent = '+' + d.toLocaleString('ru-RU') + ' кг 🔥'; dEl.style.color = '#22C55E'; }
+    else if (d < 0) { dEl.textContent = d.toLocaleString('ru-RU') + ' кг'; dEl.style.color = '#F87171'; }
+    else { dEl.textContent = '±0 кг'; dEl.style.color = '#9CA3AF'; }
+  }
+  const prs = Number(res.pr_count ?? (res.progressions || []).length);
+  if (prEl) prEl.textContent = prs + (prs ? ' 🏆' : '');
+  if (stats) stats.textContent = 'Залогировано подходов: ' + (res.logged || sets.length);
+  S._newPRs = [];
+  const pCont = document.getElementById('progression-results');
+  if (!pCont) return;
+  pCont.innerHTML = '';
+  const cmp = res.comparison || [];
+  if (cmp.length) {
+    cmp.forEach(c => {
+      let line;
+      if (c.is_assisted) {
+        line = 'Противовес: ' + c.cur_weight + ' кг → ' + (c.prev_assistance !== undefined ? c.prev_assistance + ' кг' : '?');
+        if (c.stronger) line = 'Противовес: ' + c.prev_assistance + ' кг → ' + c.cur_weight + ' кг (−' + c.assistance_delta + ' кг поддержки / Стал сильнее!) 🦾';
+      } else if (c.weight_delta > 0) {
+        line = 'Вес: ' + c.prev_weight + ' кг → ' + c.cur_weight + ' кг (+' + c.weight_delta + ' кг) 🚀';
+      } else if (c.reps_delta > 0) {
+        line = 'Повторения: ' + c.prev_reps + ' → ' + c.cur_reps + ' (+' + c.reps_delta + ' повт. в лучшем сете) ⚡';
+      } else {
+        line = c.message || ('Вес: ' + c.cur_weight + ' кг × ' + c.cur_reps);
+      }
+      const e1 = (c.cur_e1rm !== undefined && c.cur_e1rm !== null) ? ' <span class="text-gray-500">| e1RM: ' + c.cur_e1rm + ' кг' + (c.is_pr ? ' (PR!)' : '') + '</span>' : '';
+      pCont.innerHTML += '<div class="glass p-3 flex items-start gap-2"><span class="text-lg">' + (c.is_pr ? '🏆' : '▫️') + '</span><div><div class="text-white font-bold text-sm">' + (c.name || 'Упражнение') + '</div><div class="text-xs text-gray-300 mt-0.5">' + line + e1 + '</div></div></div>';
+      if (c.is_pr) S._newPRs.push({ name: c.name, e1rm: c.cur_e1rm });
+    });
+  } else if (res.progressions && res.progressions.length) {
+    res.progressions.forEach(p => {
+      const eName = (S.dayExercises.find(e => String(e.exercise_id) === String(p.exercise_id)) || {}).exercises?.name || 'Упражнение';
+      pCont.innerHTML += '<div class="glass p-3">🏆 ' + eName + ': <span class="text-gray-400">' + p.old_weight + ' кг</span> → <span class="text-green-400 font-bold">' + p.new_weight + ' кг</span></div>';
+    });
+  }
+}
+
 async function finishWorkout() {
   let sets = [];
   Object.keys(S.workoutSets).forEach(eid => {
@@ -226,17 +299,9 @@ async function finishWorkout() {
       res = await api('/api/finish_workout', { method: 'POST', body: JSON.stringify({ user_id: S.userId, day_number: S.selectedDay, sets: legacySets }) });
     }
     S.lastWeights = await api('/api/last_weights/' + S.userId);
+    try { S.workoutLogs = await api('/api/logs/' + S.userId); } catch (e) { S.workoutLogs = []; }
 
-    const pCont = document.getElementById('progression-results');
-    if (pCont) {
-      pCont.innerHTML = '';
-      if(res.progressions && res.progressions.length) {
-        res.progressions.forEach(p => {
-          let eName = S.dayExercises.find(e => String(e.exercise_id)===String(p.exercise_id))?.exercises.name || 'Упражнение';
-          pCont.innerHTML += `<div class="glass p-3 mb-2 flex items-center gap-2"><svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941"/></svg> ${eName}: <span class="text-gray-400">${p.old_weight} кг</span> → <span class="text-green-400 font-bold">${p.new_weight} кг</span></div>`;
-        });
-      }
-    }
+    renderSummary(res, sets);
     showSection('workout-complete');
   } catch(e) { alert(e.message); }
   if (btnFinish) { btnFinish.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Завершить'; btnFinish.disabled=false; }

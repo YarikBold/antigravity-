@@ -20,6 +20,25 @@ def next_weight(weight: float, mechanics: str, cns_load: int, target_muscle: str
     # extra for high cns compound with RIR>=3 will be handled in suggest
     return round(weight + inc, 2)
 
+SET_TYPE_GUIDANCE = {
+    "normal": {"rest_seconds": None, "instruction": "Обычный сет. Отдых по таймеру."},
+    "drop_set": {"rest_seconds": 0, "drop_percent": 25, "instruction": "Дроп-сет: до целевого RIR → сразу −20–30% веса → добивка 6–8 повторов без отдыха."},
+    "rest_pause": {"rest_seconds": 15, "instruction": "Рест-пауз: до отказа/RIR 0–1 → пауза ровно 15 сек → ещё 2–4 форсированных повтора."},
+    "pyramid": {"rest_seconds": None, "instruction": "Пирамида: меняй вес от сета к сету лесенкой (прямая или обратная)."},
+}
+
+def set_type_guidance(set_type: str, weight: float) -> dict:
+    """Инструкция и производные числа для типа подхода. Guards None/0."""
+    st = (set_type or "normal").lower()
+    base = SET_TYPE_GUIDANCE.get(st, SET_TYPE_GUIDANCE["normal"]).copy()
+    try:
+        w = float(weight or 0)
+    except (TypeError, ValueError):
+        w = 0.0
+    if st == "drop_set" and w > 0:
+        base["drop_to_weight"] = round(w * 0.75, 2)
+    return {"set_type": st, **base}
+
 def suggest_next_set(rir: int, reps: int, target_reps_str: str, weight: float, mechanics: str, cns_load: int, target_muscle: str) -> dict:
     """RIR-autoregulation [10] per spec"""
     if weight is None or weight <= 0:

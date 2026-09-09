@@ -3,8 +3,8 @@ from typing import List, Literal, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from ..database import get_supabase
-from ..progression import parse_target_reps, should_progress, next_weight, suggest_next_set
-from ..math_engine import warmup_sets, epley_e1rm, plate_breakdown
+from ..progression import parse_target_reps, should_progress, next_weight, suggest_next_set, set_type_guidance
+from ..math_engine import warmup_sets, epley_e1rm, plate_breakdown, effective_weight, compare_exercise_to_last
 
 router = APIRouter(prefix="/api/workouts", tags=["workouts"])
 legacy_router = APIRouter(prefix="/api", tags=["legacy"])
@@ -41,6 +41,7 @@ class SuggestRequest(BaseModel):
     mechanics: Optional[str] = "compound"
     cns_load: Optional[int] = 3
     target_muscle: Optional[str] = ""
+    set_type: Optional[str] = "normal"
 
 class LegacySetLog(BaseModel):
     exercise_id: str
@@ -56,13 +57,23 @@ class LegacyFinishRequest(BaseModel):
 
 def fetch_plan_exercise_meta(sb, plan_id, exercise_id):
     try:
-        r = sb.table("plan_exercises").select("target_reps, exercises(mechanics, cns_load, target_muscle)").eq("plan_id", plan_id).eq("exercise_id", exercise_id).limit(1).execute()
+        r = sb.table("plan_exercises").select("target_reps, exercises(mechanics, cns_load, target_muscle, is_assisted)").eq("plan_id", plan_id).eq("exercise_id", exercise_id).limit(1).execute()
         if r.data:
             row = r.data[0]
-            return row["target_reps"], row["exercises"]["mechanics"], row["exercises"]["cns_load"], row["exercises"]["target_muscle"]
+            ex = row.get("exercises") or {}
+            return row["target_reps"], ex.get("mechanics", "compound"), ex.get("cns_load", 3), ex.get("target_muscle", ""), bool(ex.get("is_assisted", False))
     except Exception:
         pass
     return None
+
+def _meta_tuple(meta):
+    """Совместимость: meta может быть (tr,mech,cns,mus) или (tr,mech,cns,mus,assisted)."""
+    if not meta:
+        return None
+    if len(meta) == 5:
+        return meta
+    tr, mech, cns, mus = meta
+    return (tr, mech, cns, mus, False)
 
 @router.post("/suggest-next-set")
 async def suggest_next_set_endpoint(req: SuggestRequest):
@@ -74,32 +85,99 @@ async def suggest_next_set_endpoint(req: SuggestRequest):
     if not tr and req.plan_id:
         try:
             sb = get_supabase()
-            meta = fetch_plan_exercise_meta(sb, req.plan_id, req.exercise_id)
+            meta = _meta_tuple(fetch_plan_exercise_meta(sb, req.plan_id, req.exercise_id))
             if meta:
-                tr, mech, cns, mus = meta
+                tr, mech, cns, mus, _assist = meta
         except Exception:
             pass
     tr = tr or "8-12"
     suggestion = suggest_next_set(req.rir, req.reps, tr, req.weight, mech, cns, mus)
     warmup = warmup_sets(suggestion["next_weight"] if suggestion["action"]=="increase" else req.weight)
     plates = plate_breakdown(suggestion["next_weight"])
-    return {**suggestion, "warmup": warmup, "plates": plates, "target_reps": tr}
+    guidance = set_type_guidance(req.set_type, req.weight)
+    return {**suggestion, "warmup": warmup, "plates": plates, "target_reps": tr, "method": guidance}
 
 @router.post("/complete")
 async def complete_workout(req: CompleteRequest):
     sb = get_supabase()
     try:
+        # Вес тела нужен для инвертированной математики гравитрона
+        bodyweight = 0.0
+        try:
+            u = sb.table("users").select("current_weight").eq("id", req.user_id).limit(1).execute()
+            if u.data and u.data[0].get("current_weight"):
+                bodyweight = float(u.data[0]["current_weight"])
+        except Exception:
+            pass
         log_id = None
         try:
-            ins = sb.table("workout_logs").insert({"user_id": req.user_id, "plan_id": req.plan_id, "date": str(date.today()), "completed": True}).execute()
+            payload = {"user_id": req.user_id, "plan_id": req.plan_id, "date": str(date.today()),
+                       "day_number": req.day_number, "completed": True}
+            ins = sb.table("workout_logs").insert(payload).execute()
             log_id = ins.data[0]["id"] if ins.data else None
         except Exception:
-            log_id = None
+            try:
+                ins = sb.table("workout_logs").insert({"user_id": req.user_id, "plan_id": req.plan_id, "date": str(date.today()), "completed": True}).execute()
+                log_id = ins.data[0]["id"] if ins.data else None
+            except Exception:
+                log_id = None
         progressions=[]
         logged=0
         last_per_ex={}
+        best_per_ex={}
         for s in req.sets:
             last_per_ex[s.exercise_id]=s
+            prev = best_per_ex.get(s.exercise_id)
+            sw = float(s.weight or 0)
+            sr = int(s.reps or 0)
+            if prev is None or (sr > int(prev.get("reps") or 0)) or (sr == int(prev.get("reps") or 0) and sw > float(prev.get("weight") or 0)):
+                best_per_ex[s.exercise_id] = {"weight": sw, "reps": sr}
+        # Карта is_assisted для упражнений сессии
+        assist_map = {}
+        try:
+            ids = list(last_per_ex.keys())
+            for i in range(0, len(ids), 20):
+                chunk = ids[i:i+20]
+                r = sb.table("exercises").select("id,is_assisted").in_("id", chunk).execute()
+                for row in (r.data or []):
+                    assist_map[row["id"]] = bool(row.get("is_assisted", False))
+        except Exception:
+            pass
+        # Предыдущие лучшие сеты по упражнениям (последний лог до текущего)
+        prev_best_map = {}
+        prev_session_tonnage = None
+        try:
+            logs = sb.table("workout_logs").select("id,date").eq("user_id", req.user_id).eq("completed", True).order("date", desc=True).limit(12).execute().data or []
+            logs = [l for l in logs if l["id"] != log_id]
+            if logs:
+                first = logs[0]
+                try:
+                    psets = sb.table("workout_sets").select("exercise_id,weight,reps").eq("log_id", first["id"]).execute().data or []
+                    t = 0.0
+                    for ps in psets:
+                        try:
+                            t += float(ps.get("weight") or 0) * int(ps.get("reps") or 0)
+                        except (TypeError, ValueError):
+                            pass
+                    prev_session_tonnage = round(t, 1)
+                except Exception:
+                    pass
+                for l in logs:
+                    try:
+                        psets = sb.table("workout_sets").select("exercise_id,weight,reps").eq("log_id", l["id"]).execute().data or []
+                    except Exception:
+                        continue
+                    for ps in psets:
+                        eid = ps.get("exercise_id")
+                        if eid in last_per_ex and eid not in prev_best_map:
+                            try:
+                                prev_best_map[eid] = {"weight": float(ps.get("weight") or 0), "reps": int(ps.get("reps") or 0)}
+                            except (TypeError, ValueError):
+                                pass
+                    if len(prev_best_map) >= len(last_per_ex):
+                        break
+        except Exception:
+            pass
         for s in req.sets:
             if log_id:
                 try:
@@ -109,31 +187,55 @@ async def complete_workout(req: CompleteRequest):
             else:
                 sb.table("workout_logs").insert({"user_id": req.user_id, "exercise_id": s.exercise_id, "weight": s.weight, "reps": s.reps, "rir": s.rir, "date": datetime.utcnow().isoformat()}).execute()
             logged+=1
-            # PR check e1RM — skip for cardio/conditioning sets with no weight
+            # PR check e1RM — строго от эффективной нагрузки (гравитрон инвертирован), skip пустых
             try:
                 if s.weight and s.weight > 0 and s.reps and s.reps > 0:
-                    e1rm = epley_e1rm(s.weight, s.reps)
+                    is_a = assist_map.get(s.exercise_id, False)
+                    from ..math_engine import effective_e1rm as _ee1rm
+                    e1rm = _ee1rm(s.weight, s.reps, is_a, bodyweight)
                     rec = sb.table("personal_records").select("e1rm").eq("user_id", req.user_id).eq("exercise_id", s.exercise_id).limit(1).execute()
                     if not rec.data or e1rm > float(rec.data[0]["e1rm"]):
                         sb.table("personal_records").upsert({"user_id": req.user_id, "exercise_id": s.exercise_id, "e1rm": e1rm, "weight": s.weight, "reps": s.reps, "date": str(date.today())}, on_conflict="user_id,exercise_id").execute()
             except Exception:
                 pass
+        # Тоннаж сессии (эффективный) + дельта + поупражненное сравнение
+        session_tonnage = 0.0
+        comparison = []
+        ex_names = {}
+        try:
+            r = sb.table("exercises").select("id,name").in_("id", list(last_per_ex.keys())[:50]).execute()
+            for row in (r.data or []):
+                ex_names[row["id"]] = row.get("name", "Упражнение")
+        except Exception:
+            pass
+        for eid, best in best_per_ex.items():
+            is_a = assist_map.get(eid, False)
+            eff_w = effective_weight(best["weight"], best["reps"], is_a, bodyweight)
+            session_tonnage += eff_w * int(best.get("reps") or 0)
+            comparison.append(compare_exercise_to_last(
+                eid, ex_names.get(eid, "Упражнение"), best, prev_best_map.get(eid), is_a, bodyweight))
+        session_tonnage = round(session_tonnage, 1)
+        tonnage_delta = round(session_tonnage - prev_session_tonnage, 1) if prev_session_tonnage is not None else None
+        pr_count = sum(1 for c in comparison if c.get("is_pr"))
         for eid, last_set in last_per_ex.items():
-            meta = fetch_plan_exercise_meta(sb, req.plan_id, eid) if req.plan_id else None
+            meta = _meta_tuple(fetch_plan_exercise_meta(sb, req.plan_id, eid)) if req.plan_id else None
             if not meta:
                 try:
-                    r = sb.table("plan_exercises").select("target_reps, exercises(mechanics,cns_load,target_muscle)").eq("exercise_id", eid).limit(1).execute()
+                    r = sb.table("plan_exercises").select("target_reps, exercises(mechanics,cns_load,target_muscle,is_assisted)").eq("exercise_id", eid).limit(1).execute()
                     if r.data:
                         row=r.data[0]
-                        meta=(row["target_reps"], row["exercises"]["mechanics"], row["exercises"]["cns_load"], row["exercises"]["target_muscle"])
+                        exm = row.get("exercises") or {}
+                        meta=(row["target_reps"], exm.get("mechanics","compound"), exm.get("cns_load",3), exm.get("target_muscle",""), bool(exm.get("is_assisted",False)))
                 except Exception:
                     pass
             if not meta: continue
-            tr, mech, cns, mus = meta
+            tr, mech, cns, mus, _a = meta
             if should_progress(last_set.reps, last_set.rir, parse_target_reps(tr), last_set.weight):
                 nw = next_weight(last_set.weight, mech, cns, mus)
                 progressions.append({"exercise_id": eid, "old_weight": last_set.weight, "new_weight": nw, "suggestion": suggest_next_set(last_set.rir, last_set.reps, tr, last_set.weight, mech, cns, mus)})
-        return {"status": "ok", "logged": logged, "progressions": progressions, "log_id": log_id}
+        return {"status": "ok", "logged": logged, "progressions": progressions, "log_id": log_id,
+                "comparison": comparison, "session_tonnage": session_tonnage,
+                "tonnage_delta": tonnage_delta, "pr_count": pr_count}
     except HTTPException:
         raise
     except Exception as e:
@@ -189,6 +291,22 @@ async def active_plan(user_id: str):
         except: pass
     r=sb.table("workout_plans").select("*").limit(1).execute()
     return r.data[0] if r.data else None
+
+@router.get("/completed-days/{user_id}")
+async def completed_days(user_id: str, plan_id: Optional[str] = None, days: int = 7):
+    """Номера day_number, выполненные юзером (строго по сохранённому day_number, без смещений)."""
+    from datetime import timedelta
+    sb = get_supabase()
+    try:
+        since = str(date.today() - timedelta(days=max(1, min(days, 60))))
+        q = sb.table("workout_logs").select("day_number").eq("user_id", user_id).eq("completed", True).gte("date", since)
+        if plan_id:
+            q = q.eq("plan_id", plan_id)
+        rows = q.execute().data or []
+        done = sorted({int(r["day_number"]) for r in rows if r.get("day_number") is not None})
+        return {"completed_days": done}
+    except Exception as e:
+        raise HTTPException(500, str(e))
 
 @router.get("/plans")
 async def list_plans():

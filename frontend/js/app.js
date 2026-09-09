@@ -237,17 +237,27 @@ function dayLabelText(d) {
   return 'День ' + d;
 }
 
+async function fetchCompletedDays() {
+  try {
+    const q = '/api/workouts/completed-days/' + S.userId + '?plan_id=' + encodeURIComponent(S.user.current_plan_id || '');
+    const r = await api(q);
+    return r.completed_days || [];
+  } catch (e) { return []; }
+}
+
 function renderDayButtons() {
   const cont = document.getElementById('day-buttons');
   if (!cont) return;
   cont.innerHTML = '';
-  const days = new Set(S.planData.exercises.map(e => e.day_number));
+  const days = Array.from(new Set(S.planData.exercises.map(e => e.day_number))).sort((a, b) => a - b);
 
+  // Синхронная отрисовка, затем асинхронная подсветка выполненных (строго по day_number)
   days.forEach(d => {
     const dayExercises = S.planData.exercises.filter(e => e.day_number === d);
     const isCardioDay = dayExercises.some(e => e.exercises && ['cardio','conditioning'].includes(e.exercises.movement_pattern));
 
     let btn = document.createElement('button');
+    btn.setAttribute('data-day', String(d));
     if (isCardioDay) {
       btn.className = 'glass p-4 text-left card-hover col-span-2';
       btn.style.borderLeft = '4px solid #F59E0B';
@@ -270,6 +280,21 @@ function renderDayButtons() {
     }
     cont.appendChild(btn);
   });
+
+  // Подсветка: зелёный — ТОЛЬКО выполненный day_number; следующий — фиолетовый акцент
+  fetchCompletedDays().then(done => {
+    const doneSet = new Set((done || []).map(Number));
+    if (!doneSet.size) return;
+    doneSet.forEach(d => {
+      const el = cont.querySelector('[data-day="' + d + '"]');
+      if (el) { el.style.borderColor = 'rgba(34,197,94,.55)'; el.style.background = 'rgba(34,197,94,.10)'; }
+    });
+    const next = days.find(d => !doneSet.has(Number(d)));
+    if (next !== undefined) {
+      const el = cont.querySelector('[data-day="' + next + '"]');
+      if (el && !doneSet.has(Number(next))) { el.style.borderColor = 'rgba(139,92,246,.55)'; }
+    }
+  }).catch(() => {});
 }
 
 // --- Readiness flow (DOMS + AI) ---

@@ -48,6 +48,7 @@ CREATE TABLE exercises (
   mechanics         TEXT NOT NULL CHECK (mechanics IN ('compound','isolation')),
   joint_stress      TEXT[] NOT NULL DEFAULT '{}',
   cns_load          INT NOT NULL CHECK (cns_load BETWEEN 1 AND 5),
+  is_assisted       BOOLEAN NOT NULL DEFAULT false,
   media_url         TEXT
 );
 
@@ -78,12 +79,13 @@ CREATE TABLE readiness_logs (
   UNIQUE(user_id, date)
 );
 
--- 6. workout_logs (+кардио-метаданные сессии)
+-- 6. workout_logs (+кардио-метаданные сессии, +day_number для подсветки выполненных дней)
 CREATE TABLE workout_logs (
   id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id                 UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   plan_id                 UUID REFERENCES workout_plans(id) ON DELETE SET NULL,
   date                    DATE NOT NULL DEFAULT CURRENT_DATE,
+  day_number              INT,
   completed               BOOLEAN NOT NULL DEFAULT false,
   session_type            TEXT NOT NULL DEFAULT 'strength' CHECK (session_type IN ('strength','cardio')),
   total_duration_minutes  INT,
@@ -183,4 +185,7 @@ ALTER TABLE bench_records DISABLE ROW LEVEL SECURITY;
 -- ALTER TABLE workout_logs ADD COLUMN IF NOT EXISTS total_duration_minutes INT;
 -- ALTER TABLE workout_logs ADD COLUMN IF NOT EXISTS perceived_effort_rpe INT;
 -- ALTER TABLE workout_logs ADD COLUMN IF NOT EXISTS notes TEXT;
+-- ALTER TABLE workout_logs ADD COLUMN IF NOT EXISTS day_number INT;
+-- ALTER TABLE exercises ADD COLUMN IF NOT EXISTS is_assisted BOOLEAN NOT NULL DEFAULT false;
+-- UPDATE exercises SET is_assisted = true WHERE name IN ('Подтягивания в гравитроне');
 -- (Таблицы bench_calendar_state / bench_records создаются блоками 9-10 выше.)

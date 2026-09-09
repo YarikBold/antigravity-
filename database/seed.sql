@@ -132,6 +132,9 @@ INSERT INTO exercises (name, target_muscle, synergists, movement_pattern, equipm
   ('Велотренажер / Заминка (LISS)',     'cardio',     ARRAY['quads','hamstrings'],       'cardio',        'machine',    'isolation', ARRAY[]::TEXT[],             1, NULL)
 ON CONFLICT (name) DO NOTHING;
 
+-- Гравитрон: инвертированная физика противовеса (effective = bodyweight - assistance)
+UPDATE exercises SET is_assisted = true WHERE name = 'Подтягивания в гравитроне';
+
 DELETE FROM plan_exercises WHERE day_number = 4 AND plan_id IN (
   '33333333-3333-3333-3333-333333333333',
   '44444444-4444-4444-4444-444444444444',

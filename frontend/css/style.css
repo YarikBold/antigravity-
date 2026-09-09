@@ -102,6 +102,12 @@ body{background:#121212;color:#e5e7eb;font-family:'Inter',system-ui,sans-serif;m
 #bench-modal{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(10,10,16,.7);backdrop-filter:blur(6px)}
 #bench-modal .bm-box{width:min(92vw,420px)}
 
+/* === Finisher + modals === */
+#finisher-modal.hidden{display:none !important}
+#finisher-modal.flex{display:flex !important}
+#finisher-block{transition:border-color .3s, box-shadow .3s}
+#day-buttons [data-day]{transition:border-color .25s, background .25s}
+
 /* === Mobile adaptation (<=420px) === */
 @media (max-width:420px){
   .cr-timer{font-size:52px;letter-spacing:-1px}

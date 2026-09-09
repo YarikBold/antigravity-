@@ -67,6 +67,97 @@ def rest_timer_for(rir: int, mechanics: str) -> int:
     # compound
     return 180 if rir <= 1 else 120
 
+def effective_weight(weight, reps, is_assisted: bool = False, bodyweight: float = 0.0) -> float:
+    """Истинная нагрузка. Обычное: вес штанги. Гравитрон: max(0, bodyweight - assistance). Guards None/0 (checklist #3)."""
+    try:
+        w = float(weight or 0)
+    except (TypeError, ValueError):
+        return 0.0
+    if is_assisted:
+        try:
+            bw = float(bodyweight or 0)
+        except (TypeError, ValueError):
+            bw = 0.0
+        return round(max(0.0, bw - w), 2)
+    return round(w, 2)
+
+def assistance_delta(old_assistance, new_assistance) -> dict:
+    """Инвертированный прогресс гравитрона: снижение противовеса = рост силы."""
+    try:
+        old = float(old_assistance or 0)
+        new = float(new_assistance or 0)
+    except (TypeError, ValueError):
+        return {"delta": 0.0, "stronger": False, "message": ""}
+    delta = round(old - new, 2)  # >0 значит стал сильнее
+    if delta > 0:
+        return {"delta": delta, "stronger": True,
+                "message": f"Противовес снижен на {delta} кг! Ты тянешь больше своего веса!"}
+    if delta < 0:
+        return {"delta": delta, "stronger": False,
+                "message": f"Противовес вырос на {abs(delta)} кг — лёгкая неделя, бывает."}
+    return {"delta": 0.0, "stronger": False, "message": "Противовес без изменений."}
+
+def effective_e1rm(weight, reps, is_assisted: bool = False, bodyweight: float = 0.0) -> float:
+    """e1RM по Эпли строго от эффективной нагрузки."""
+    try:
+        r = int(reps or 0)
+    except (TypeError, ValueError):
+        r = 0
+    return epley_e1rm(effective_weight(weight, reps, is_assisted, bodyweight), r)
+
+def compare_exercise_to_last(exercise_id: str, name: str, cur_best: dict, prev_best: dict | None,
+                             is_assisted: bool = False, bodyweight: float = 0.0) -> dict:
+    """Сравнение лучшего сета упражнения с прошлой тренировкой. Guards None/0."""
+    cur_w = float((cur_best or {}).get("weight") or 0)
+    cur_r = int((cur_best or {}).get("reps") or 0)
+    out = {"exercise_id": exercise_id, "name": name, "is_assisted": bool(is_assisted),
+           "cur_weight": cur_w, "cur_reps": cur_r, "is_pr": False, "message": ""}
+    if is_assisted:
+        out["cur_effective"] = effective_weight(cur_w, cur_r, True, bodyweight)
+        out["cur_e1rm"] = effective_e1rm(cur_w, cur_r, True, bodyweight)
+        if not prev_best:
+            out["message"] = "Первое измерение противовеса — база для прогресса."
+            return out
+        try:
+            prev_w = float(prev_best.get("weight") or 0)
+        except (TypeError, ValueError):
+            prev_w = 0.0
+        prog = assistance_delta(prev_w, cur_w)
+        out["prev_assistance"] = prev_w
+        out["assistance_delta"] = prog["delta"]
+        out["stronger"] = prog["stronger"]
+        out["message"] = prog["message"]
+        if prog["stronger"]:
+            out["is_pr"] = True
+        return out
+    out["cur_e1rm"] = epley_e1rm(cur_w, cur_r)
+    if not prev_best:
+        out["message"] = "Первое выполнение — точка отсчёта."
+        return out
+    try:
+        prev_w = float(prev_best.get("weight") or 0)
+        prev_r = int(prev_best.get("reps") or 0)
+    except (TypeError, ValueError):
+        prev_w, prev_r = 0.0, 0
+    out["prev_weight"] = prev_w
+    out["prev_reps"] = prev_r
+    out["prev_e1rm"] = epley_e1rm(prev_w, prev_r)
+    dw = round(cur_w - prev_w, 2)
+    dr = cur_r - prev_r
+    out["weight_delta"] = dw
+    out["reps_delta"] = dr
+    if dw > 0:
+        out["is_pr"] = True
+        out["message"] = f"Вес: {prev_w} кг → {cur_w} кг (+{dw} кг)"
+    elif dw < 0:
+        out["message"] = f"Вес: {prev_w} кг → {cur_w} кг ({dw} кг) — делоад/техника."
+    elif dr > 0:
+        out["is_pr"] = True
+        out["message"] = f"Повторения: {prev_r} → {cur_r} (+{dr} повт. в лучшем сете)"
+    else:
+        out["message"] = f"Стабильно: {cur_w} кг × {cur_r}."
+    return out
+
 def mev_mav_status(sets_per_week: int, muscle: str) -> str:
     """MEV/MAV volume tracker color scale"""
     # simplified thresholds
