@@ -138,15 +138,28 @@ tailwind.config = { theme: { extend: { colors: { purple: '#8B5CF6', pink: '#EC48
     </div>
     <div class="text-gray-500 text-xs mb-3">Логируй подходы, RIR подскажет вес на следующий сет</div>
     <div class="glass p-4 mb-4">
-      <div class="flex items-center justify-between">
+      <div class="flex items-center justify-between gap-2 flex-wrap">
         <div class="flex items-center gap-3">
           <div class="timer-ring !w-16 !h-16" id="timer-ring"><div class="text-lg font-black font-mono" id="timer-display">01:30</div></div>
           <div>
-            <div class="text-xs text-gray-400 uppercase font-bold">Отдых</div>
+            <div class="text-xs text-gray-400 uppercase font-bold">Отдых <span id="timer-preset-label" class="text-purple">90с</span></div>
             <div class="text-[11px] text-gray-500">RIR≤1 → 180с · RIR≥2 → 120с · изоляция → 60–90с</div>
           </div>
         </div>
-        <button id="btn-timer-start" onclick="startRestTimer(90)" class="btn-ghost !px-4 !py-2 text-sm">Старт 90с</button>
+        <div class="flex items-center gap-2">
+          <button onclick="adjustTimer(-15)" class="btn-ghost !px-3 !py-2 text-sm" title="Меньше на 15с">−15</button>
+          <button onclick="adjustTimer(15)" class="btn-ghost !px-3 !py-2 text-sm" title="Больше на 15с">+15</button>
+          <button id="btn-timer-start" onclick="startRestTimer(90)" class="btn-ghost !px-4 !py-2 text-sm">Старт</button>
+          <button onclick="resetTimer()" class="btn-ghost !px-3 !py-2 text-xs" title="Сбросить">↺</button>
+        </div>
+      </div>
+      <div class="flex gap-2 mt-3 flex-wrap">
+        <button onclick="startRestTimer(30)" class="glass flex-1 py-2 text-xs min-w-[52px]">30с</button>
+        <button onclick="startRestTimer(45)" class="glass flex-1 py-2 text-xs min-w-[52px]">45с</button>
+        <button onclick="startRestTimer(60)" class="glass flex-1 py-2 text-xs min-w-[52px]">60с</button>
+        <button onclick="startRestTimer(90)" class="glass flex-1 py-2 text-xs min-w-[52px]">90с</button>
+        <button onclick="startRestTimer(120)" class="glass flex-1 py-2 text-xs min-w-[52px]">120с</button>
+        <button onclick="startRestTimer(180)" class="glass flex-1 py-2 text-xs min-w-[52px]">180с</button>
       </div>
     </div>
     <div class="glass p-3 mb-4 flex items-center gap-3">

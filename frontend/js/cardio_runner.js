@@ -14,7 +14,7 @@ const CR_PLAN = {
   liss_out: { label: 'LISS Заминка', minutes: 15, hint: 'Велотренажер / эллипсоид, легкий темп. Дожигаем жирные кислоты.' }
 };
 
-const cr = { phase: null, phaseStart: 0, phaseDurSec: 0, minuteEndAt: 0, minuteStart: 0, stationIdx: 0, round: 1, timer: null, running: false };
+const cr = { phase: null, phaseStart: 0, phaseDurSec: 0, minuteEndAt: 0, minuteStart: 0, stationIdx: 0, round: 1, timer: null, running: false, paused: false, pauseStart: 0, sessionStart: 0, emomDone: 0 };
 
 function crFmt(sec){ sec = Math.max(0, sec); const m = Math.floor(sec/60).toString().padStart(2,'0'); const s = Math.floor(sec%60).toString().padStart(2,'0'); return `${m}:${s}`; }
 
@@ -43,7 +43,31 @@ function crRenderIdle(){
 function crStart(){
   AGAudio.unlock(); // user gesture (чек-лист №4)
   cr.running = true;
+  cr.paused = false;
+  cr.sessionStart = Date.now();
+  cr.emomDone = 0;
   crEnterPhase('liss_in');
+}
+
+// Пауза/продолжить для кардио (со сдвигом всех меток времени)
+function crTogglePause(){
+  const btn = document.getElementById('cr-btn-pause');
+  if(!cr.running) return;
+  if(!cr.paused){
+    cr.paused = true;
+    cr.pauseStart = Date.now();
+    if(cr.timer){ clearInterval(cr.timer); cr.timer = null; }
+    if(btn) btn.textContent = '▶ Продолжить';
+  } else {
+    const gap = Date.now() - cr.pauseStart;
+    cr.phaseStart += gap;
+    cr.minuteStart += gap;
+    cr.minuteEndAt += gap;
+    cr.paused = false;
+    if(btn) btn.textContent = '⏸ Пауза';
+    cr.timer = setInterval(crTick, 250);
+    crTick();
+  }
 }
 
 function crEnterPhase(phase){
@@ -96,7 +120,10 @@ function crRenderLISS(plan, title){
       <div class="glass p-4 w-full">
         <div class="cr-hint">${plan.hint}</div>
       </div>
-      <button onclick="crNextPhase()" class="btn-ghost">Пропустить фазу →</button>
+      <div class="flex gap-2 w-full">
+        <button id="cr-btn-pause" onclick="crTogglePause()" class="btn-ghost flex-1">⏸ Пауза</button>
+        <button onclick="crNextPhase()" class="btn-ghost flex-1">Пропустить фазу →</button>
+      </div>
     </div>`;
 }
 
@@ -104,7 +131,8 @@ function crEnterMinute(){
   const minuteInEmom = Math.floor((Date.now()-cr.phaseStart)/60000);
   cr.stationIdx = minuteInEmom % 5;
   cr.round = Math.floor(minuteInEmom/5) + 1;
-  if(minuteInEmom >= CR_PLAN.emom_minutes){ crNextPhase(); return; }
+  if(minuteInEmom >= CR_PLAN.emom_minutes){ cr.emomDone = 3; crNextPhase(); return; }
+  cr.emomDone = Math.min(3, Math.floor(minuteInEmom/5));
   cr.minuteStart = Date.now();
   cr.minuteEndAt = cr.minuteStart + 60000;
   crRenderEMOMMinute();
@@ -126,7 +154,10 @@ function crRenderEMOMMinute(){
         ${st.weight ? `<div class="text-gray-400 text-xs">вес: ${st.weight}</div>` : ''}
         <div class="cr-hint mt-1">${st.hint}</div>
       </div>
-      <button onclick="crNextPhase()" class="btn-ghost">Закончить EMOM →</button>
+      <div class="flex gap-2 w-full">
+        <button id="cr-btn-pause" onclick="crTogglePause()" class="btn-ghost flex-1">⏸ Пауза</button>
+        <button onclick="crNextPhase()" class="btn-ghost flex-1">Закончить EMOM →</button>
+      </div>
     </div>`;
   // Предупреждающие бипы на последних 3 секундах минуты
   AGAudio.beep(660, 120);
@@ -180,17 +211,16 @@ async function crFinish(auto){
 async function crSave(){
   const btn = document.getElementById('cr-finish-btn');
   if(btn){ btn.innerHTML = '<span class="spinner"></span> Сохранение...'; btn.disabled = true; }
-  const minutes = Math.max(1, Math.round((Date.now() - cr.phaseStart)/60000));
+  const totalMin = cr.sessionStart ? Math.max(1, Math.round((Date.now() - cr.sessionStart)/60000)) : 45;
+  const doneEl = document.getElementById('cr-done-min');
+  if(doneEl) doneEl.textContent = '~' + totalMin + ' мин';
   const payload = {
     user_id: String(S.userId),
     plan_id: String(S.user.current_plan_id || ''),
-    duration_minutes: 45,
-    stations_done: [
-      { name: 'LISS Разгон', minutes: 15 },
-      { name: 'EMOM MetCon', minutes: 15, rounds: 3 },
-      { name: 'LISS Заминка', minutes: 15 }
-    ],
-    perceived_effort_rpe: 7
+    total_duration_minutes: totalMin,
+    emom_rounds_completed: cr.emomDone || 0,
+    perceived_effort_rpe: 7,
+    notes: `LISS+EMOM(${cr.emomDone || 0}r)+LISS Flush`
   };
   let persisted = false;
   try{

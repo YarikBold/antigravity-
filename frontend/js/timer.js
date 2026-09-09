@@ -22,11 +22,38 @@ function restDurationFor(rir, mechanics){
   return (rir <= 1) ? 180 : 120;
 }
 
+function timerCurrentLeft(){
+  if(timerInterval) return Math.max(0, Math.ceil((timerEndAt - Date.now())/1000));
+  if(timerPausedLeft > 0) return Math.ceil(timerPausedLeft);
+  if(timerEndAt > 0) return Math.max(0, Math.ceil((timerEndAt - Date.now())/1000));
+  return 90;
+}
+
 function updateTimerDisplay(){
   const el = document.getElementById('timer-display');
   if(!el) return;
-  const left = timerPausedLeft || Math.max(0, Math.ceil((timerEndAt - Date.now())/1000));
-  el.textContent = formatTimer(left);
+  el.textContent = formatTimer(timerCurrentLeft());
+  const lbl = document.getElementById('timer-preset-label');
+  if(lbl) lbl.textContent = timerCurrentLeft() + 'с';
+}
+
+// +/-15с в диапазоне 15..180, работает и на ходу, и на паузе
+function adjustTimer(delta){
+  const MIN = 15, MAX = 180;
+  if(timerInterval){
+    timerEndAt += delta*1000;
+    const left = (timerEndAt - Date.now())/1000;
+    if(left < 1){ timerEndAt = Date.now() + 1000; }
+    if(left > MAX){ timerEndAt = Date.now() + MAX*1000; }
+  } else {
+    const cur = timerPausedLeft > 0 ? timerPausedLeft : (timerEndAt > 0 ? Math.max(0,(timerEndAt-Date.now())/1000) : 90);
+    let next = Math.round(cur + delta);
+    if(next < MIN) next = MIN;
+    if(next > MAX) next = MAX;
+    timerPausedLeft = next;
+    timerEndAt = 0;
+  }
+  updateTimerDisplay();
 }
 
 function startRestTimer(seconds, rir, mechanics){

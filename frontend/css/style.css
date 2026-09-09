@@ -100,5 +100,16 @@ body{background:#121212;color:#e5e7eb;font-family:'Inter',system-ui,sans-serif;m
 .bc-ofp{font-size:10px;color:#9CA3AF;font-weight:600;line-height:1.2}
 /* Modal */
 #bench-modal{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(10,10,16,.7);backdrop-filter:blur(6px)}
-#bench-modal.active{display:flex}
 #bench-modal .bm-box{width:min(92vw,420px)}
+
+/* === Mobile adaptation (<=420px) === */
+@media (max-width:420px){
+  .cr-timer{font-size:52px;letter-spacing:-1px}
+  .cr-minute-timer{font-size:42px}
+  .cr-station{font-size:18px}
+  .set-row{grid-template-columns:22px 1fr 10px 1fr 24px 38px 54px 32px;gap:4px}
+  .set-row input[type=number]{font-size:14px;padding:7px 1px}
+  .set-row select{font-size:10px;padding:7px 1px}
+  .glass{border-radius:14px}
+  .btn-primary{padding:13px 18px;font-size:14px}
+}
