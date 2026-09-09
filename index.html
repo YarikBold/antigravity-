@@ -39,7 +39,17 @@
     .btn-ghost{background:rgba(139,92,246,.12);color:#A78BFA;border:1px solid rgba(139,92,246,.2);border-radius:12px;padding:10px 20px;font-weight:500;cursor:pointer;transition:all .2s}
     .input-dark{background:rgba(42,42,62,.6);border:1px solid rgba(139,92,246,.15);border-radius:10px;color:#e5e7eb;padding:10px 14px;font-size:15px;width:100%;transition:border-color .2s}
     .input-dark:focus{outline:none;border-color:#8B5CF6}
+    .set-row{display:grid !important;grid-template-columns:26px 1fr 12px 1fr 26px 42px 60px 34px;gap:6px;align-items:center;flex-wrap:nowrap !important}
     .set-row.done{opacity:.5;background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.3)}
+    .set-row .set-num{font-size:12px;color:#6B7280;text-align:left;white-space:nowrap}
+    .set-row .set-x{font-size:12px;color:#6B7280;text-align:center}
+    .set-row .set-rir-label{font-size:10px;color:#6B7280;text-align:center;white-space:nowrap}
+    .set-row input,.set-row select{min-width:0;width:100%;margin:0}
+    .set-row input[type=number]{-moz-appearance:textfield;appearance:textfield;color:#fff;font-weight:700;font-size:15px;font-family:'Inter',monospace;text-align:center;padding:8px 2px}
+    .set-row input::-webkit-outer-spin-button,.set-row input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+    .set-row input::placeholder{color:#4B5563;font-weight:400}
+    .set-row select{font-size:11px;padding:8px 2px;text-align:center;color:#A78BFA}
+    .set-row .set-done{width:34px;height:34px;flex-shrink:0}
     /* Muscle chips - clickable pills */
     .muscle-chip{transition:all .15s;user-select:none}
     .muscle-chip.active{background:linear-gradient(135deg,#8B5CF6,#EC4899);color:#fff;border-color:transparent;box-shadow:0 4px 16px rgba(139,92,246,.35)}
@@ -1022,15 +1032,15 @@ function renderExerciseCards() {
     const methodBadge = (ex.suggested_method && ex.suggested_method!=='normal') ? `<span class="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-pink/20 text-pink border border-pink/30">${ex.suggested_method}</span>` : '';
     const methodHint = (ex.suggested_method && ex.suggested_method!=='normal') ? `<div class="text-[10px] text-pink/80 mb-2">Метод: ${ex.suggested_method} — ${ex.suggested_method==='drop_set'?'дроп-сет: снизь вес после отказа':ex.suggested_method==='rest_pause'?'rest-pause: 15с пауза и ещё подход':ex.suggested_method==='pyramid'?'пирамида: наращивай вес':ex.suggested_method==='amrap'?'AMRAP: максимум за время':ex.suggested_method==='emom'?'EMOM: каждую минуту':''}</div>` : '';
     let setsHTML = S.workoutSets[ex.exercise_id].map((s,i) => `
-      <div class="set-row flex items-center gap-2 p-2 rounded-lg border border-transparent ${s.done?'done':''}">
-        <span class="text-xs text-gray-500 w-4">#${i+1}</span>
-        <input type="number" step="0.5" value="${s.weight !== '' ? s.weight : ''}" placeholder="${last ? last.weight : ''}" class="input-dark py-1 text-center" onchange="upd('${ex.exercise_id}',${i},'weight',this.value)">
-        <span class="text-xs">×</span>
-        <input type="number" value="${s.reps !== '' ? s.reps : ''}" placeholder="${last ? last.reps : ''}" class="input-dark py-1 text-center" onchange="upd('${ex.exercise_id}',${i},'reps',this.value)">
-        <span class="text-xs">RIR</span>
-        <input type="number" value="${s.rir !== '' ? s.rir : ''}" placeholder="${last ? last.rir : 2}" class="input-dark py-1 text-center" onchange="upd('${ex.exercise_id}',${i},'rir',this.value)">
-        <select onchange="upd('${ex.exercise_id}',${i},'set_type',this.value)" class="input-dark py-1 text-center text-xs w-20"><option value="normal" ${s.set_type==='normal'?'selected':''}>norm</option><option value="drop_set" ${s.set_type==='drop_set'?'selected':''}>drop</option><option value="rest_pause" ${s.set_type==='rest_pause'?'selected':''}>rest</option><option value="pyramid" ${s.set_type==='pyramid'?'selected':''}>pyr</option></select>
-        <button onclick="done('${ex.exercise_id}',${i})" class="w-8 h-8 rounded bg-purple/20 text-purple flex items-center justify-center"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></button>
+      <div class="set-row p-2 rounded-lg border border-transparent ${s.done?'done':''}">
+        <span class="set-num">#${i+1}</span>
+        <input type="number" step="0.5" inputmode="decimal" value="${s.weight !== '' ? s.weight : ''}" placeholder="${last ? last.weight : '0'}" class="input-dark" onchange="upd('${ex.exercise_id}',${i},'weight',this.value)">
+        <span class="set-x">×</span>
+        <input type="number" inputmode="numeric" value="${s.reps !== '' ? s.reps : ''}" placeholder="${last ? last.reps : '0'}" class="input-dark" onchange="upd('${ex.exercise_id}',${i},'reps',this.value)">
+        <span class="set-rir-label">RIR</span>
+        <input type="number" inputmode="numeric" min="0" max="5" value="${s.rir !== '' ? s.rir : ''}" placeholder="${last ? last.rir : 2}" class="input-dark" onchange="upd('${ex.exercise_id}',${i},'rir',this.value)">
+        <select onchange="upd('${ex.exercise_id}',${i},'set_type',this.value)" class="input-dark"><option value="normal" ${s.set_type==='normal'?'selected':''}>norm</option><option value="drop_set" ${s.set_type==='drop_set'?'selected':''}>drop</option><option value="rest_pause" ${s.set_type==='rest_pause'?'selected':''}>rest</option><option value="pyramid" ${s.set_type==='pyramid'?'selected':''}>pyr</option></select>
+        <button onclick="done('${ex.exercise_id}',${i})" class="set-done rounded bg-purple/20 text-purple flex items-center justify-center"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></button>
       </div>`).join('');
       
     cont.innerHTML += `<div class="glass p-4 border-l-4 border-purple"><div class="text-white font-bold mb-2 flex flex-wrap items-center gap-1">${e.name} <span class="text-xs text-gray-500 font-normal">(${ex.target_sets||ex.sets||3}×${repStr})</span>${methodBadge}<button onclick="swapExercise('${ex.exercise_id}')" class="ml-auto text-[10px] px-2 py-1 rounded bg-white/10 text-purple border border-purple/20 hover:bg-purple/20">Тренажер занят → Заменить</button></div>${methodHint}${lastHint}<div id="plates-${ex.exercise_id}" class="flex flex-wrap gap-1 my-1"></div>${setsHTML}</div>`;

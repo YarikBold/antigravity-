@@ -74,17 +74,17 @@ function renderExerciseCards() {
     const methodHint = (ex.suggested_method && ex.suggested_method!=='normal') ? `<div class="text-[10px] text-pink/80 mb-2">Метод: ${ex.suggested_method} — ${ex.suggested_method==='drop_set'?'дроп-сет: снизь вес после отказа':ex.suggested_method==='rest_pause'?'rest-pause: 15с пауза и ещё подход':ex.suggested_method==='pyramid'?'пирамида: наращивай вес':ex.suggested_method==='amrap'?'AMRAP: максимум за время':ex.suggested_method==='emom'?'EMOM: каждую минуту':''}</div>` : '';
     let setsHTML = S.workoutSets[ex.exercise_id].map((s,i) => {
       const hintKey = String(ex.exercise_id)+':'+i;
-      const hint = S.setHints[hintKey] ? `<div class="w-full text-[10px] text-green-400 font-bold px-2">${S.setHints[hintKey]}</div>` : '';
+      const hint = S.setHints[hintKey] ? `<div class="text-[10px] text-green-400 font-bold px-2" style="grid-column:1/-1">${S.setHints[hintKey]}</div>` : '';
       return `
-      <div class="set-row flex flex-wrap items-center gap-2 p-2 rounded-lg border border-transparent ${s.done?'done':''}">
-        <span class="text-xs text-gray-500 w-4">#${i+1}</span>
-        <input type="number" step="0.5" value="${s.weight !== '' ? s.weight : ''}" placeholder="${last ? last.weight : ''}" class="input-dark py-1 text-center w-20" onchange="upd('${ex.exercise_id}',${i},'weight',this.value)">
-        <span class="text-xs">×</span>
-        <input type="number" value="${s.reps !== '' ? s.reps : ''}" placeholder="${last ? last.reps : ''}" class="input-dark py-1 text-center w-16" onchange="upd('${ex.exercise_id}',${i},'reps',this.value)">
-        <span class="text-xs">RIR</span>
-        <input type="number" value="${s.rir !== '' ? s.rir : ''}" placeholder="${last ? last.rir : 2}" class="input-dark py-1 text-center w-12" onchange="upd('${ex.exercise_id}',${i},'rir',this.value)">
-        <select onchange="upd('${ex.exercise_id}',${i},'set_type',this.value)" class="input-dark py-1 text-center text-xs w-20"><option value="normal" ${s.set_type==='normal'?'selected':''}>norm</option><option value="drop_set" ${s.set_type==='drop_set'?'selected':''}>drop</option><option value="rest_pause" ${s.set_type==='rest_pause'?'selected':''}>rest</option><option value="pyramid" ${s.set_type==='pyramid'?'selected':''}>pyr</option></select>
-        <button onclick="done('${ex.exercise_id}',${i})" class="w-8 h-8 rounded bg-purple/20 text-purple flex items-center justify-center"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></button>
+      <div class="set-row p-2 rounded-lg border border-transparent ${s.done?'done':''}">
+        <span class="set-num">#${i+1}</span>
+        <input type="number" step="0.5" inputmode="decimal" value="${s.weight !== '' ? s.weight : ''}" placeholder="${last ? last.weight : '0'}" class="input-dark" onchange="upd('${ex.exercise_id}',${i},'weight',this.value)">
+        <span class="set-x">×</span>
+        <input type="number" inputmode="numeric" value="${s.reps !== '' ? s.reps : ''}" placeholder="${last ? last.reps : '0'}" class="input-dark" onchange="upd('${ex.exercise_id}',${i},'reps',this.value)">
+        <span class="set-rir-label">RIR</span>
+        <input type="number" inputmode="numeric" min="0" max="5" value="${s.rir !== '' ? s.rir : ''}" placeholder="${last ? last.rir : 2}" class="input-dark" onchange="upd('${ex.exercise_id}',${i},'rir',this.value)">
+        <select onchange="upd('${ex.exercise_id}',${i},'set_type',this.value)" class="input-dark"><option value="normal" ${s.set_type==='normal'?'selected':''}>norm</option><option value="drop_set" ${s.set_type==='drop_set'?'selected':''}>drop</option><option value="rest_pause" ${s.set_type==='rest_pause'?'selected':''}>rest</option><option value="pyramid" ${s.set_type==='pyramid'?'selected':''}>pyr</option></select>
+        <button onclick="done('${ex.exercise_id}',${i})" class="set-done rounded bg-purple/20 text-purple flex items-center justify-center"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></button>
         ${hint}
       </div>`;
     }).join('');
