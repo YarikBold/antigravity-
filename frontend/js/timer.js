@@ -72,7 +72,7 @@ function startRestTimer(seconds, rir, mechanics){
     const left = (timerEndAt - Date.now())/1000;
     if(left <= 0){
       clearInterval(timerInterval); timerInterval = null;
-      if(btn) btn.textContent = 'Готово! 🔔';
+      if(btn) btn.textContent = 'Готово!';
       if(ring) ring.classList.remove('active');
       try{ navigator.vibrate && navigator.vibrate([200,100,200]); }catch{}
       try{ if(typeof AGAudio !== 'undefined') AGAudio.beep(880, 400); }catch{}

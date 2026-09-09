@@ -92,14 +92,13 @@ function stopMetronome(){
 // --- Workout Share Card: форматированный текст для Telegram ---
 function buildShareText(){
   const tonnage = Object.values(S.workoutSets || {}).flat().filter(s=>s.done).reduce((a,s)=>a+(s.weight*s.reps),0);
-  const prLines = (S._newPRs || []).map(p=>`🏆 Рекорд e1RM ${p.name}: ${p.e1rm}кг`).join('\n');
+  const prLines = (S._newPRs || []).map(p=>`[PR] e1RM ${p.name}: ${p.e1rm}кг`).join('\n');
   return [
-    `🏋️ Antigravity — ${new Date().toLocaleDateString('ru-RU')}`,
-    `👤 ${S.user?.name || ''} • ${S.planData?.plan?.name || ''} ${typeof dayLabelText==='function' ? dayLabelText(S.selectedDay) : ('День ' + (S.selectedDay||''))}`,
+    `ANTIGRAVITY — ${new Date().toLocaleDateString('ru-RU')}`,
+    `Атлет: ${S.user?.name || ''} • ${S.planData?.plan?.name || ''} ${typeof dayLabelText==='function' ? dayLabelText(S.selectedDay) : ('День ' + (S.selectedDay||''))}`,
     `Тоннаж: ${tonnage.toFixed(1)} кг`,
     prLines,
-    `Подходов: ${Object.values(S.workoutSets || {}).flat().filter(s=>s.done).length}`,
-    `Antigravity 💜`
+    `Подходов: ${Object.values(S.workoutSets || {}).flat().filter(s=>s.done).length}`
   ].filter(Boolean).join('\n');
 }
 

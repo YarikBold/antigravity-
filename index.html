@@ -362,7 +362,7 @@
   <!-- Tempo metronome [18] -->
   <div class="glass p-3 mb-4 flex items-center justify-between">
     <div class="flex items-center gap-2">
-      <div id="metronome-circle" class="w-8 h-8 rounded-full bg-purple/20 border-2 border-purple/30 flex items-center justify-center text-xs">♩</div>
+      <div id="metronome-circle" class="w-8 h-8 rounded-full bg-purple/20 border-2 border-purple/30 flex items-center justify-center"><svg class="w-4 h-4 text-purple" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 18V6l10-2v11M9 18a2 2 0 11-4 0 2 2 0 014 0zM19 15a2 2 0 11-4 0 2 2 0 014 0z"/></svg></div>
       <div><div class="text-xs text-gray-400">Темпо-метроном</div><div class="text-[10px] text-purple" id="metronome-phase">3-0-1-0</div></div>
     </div>
     <div class="flex gap-2">
@@ -738,7 +738,7 @@ async function loadPlans() {
           <div class="text-gray-400 text-sm mt-1">${plan.description}</div>
           <div class="text-xs text-gray-500 mt-2">${(plan.tags || []).map(t => `<span class="px-2 py-0.5 bg-purple/20 rounded text-purple mr-1">${t}</span>`).join('')}</div>
         </div>
-        ${isCurrent ? '<span class="text-green-400 text-2xl">✓</span>' : ''}
+        ${isCurrent ? '<span class="text-green-400"><svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></span>' : ''}
       </div>
     `;
     if (!isCurrent) {
@@ -783,7 +783,7 @@ function renderDayButtons() {
             <svg class="w-5 h-5" style="color:#F59E0B" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 6.75 6.75 0 009 18.75a6.768 6.768 0 006.362-13.536z"/></svg>
           </div>
           <div class="flex-1">
-            <div class="font-bold uppercase text-xs mb-0.5" style="color:#F59E0B">⚡ Кардио-день</div>
+            <div class="font-bold uppercase text-xs mb-0.5 flex items-center gap-1" style="color:#F59E0B"><svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>Кардио-день</div>
             <div class="text-white font-bold text-sm">Жиросжигание & Выносливость</div>
             <div class="text-gray-500 text-[11px] mt-0.5">LISS 15м → EMOM MetCon 15м → Заминка 15м • ~45 мин</div>
           </div>
@@ -970,7 +970,7 @@ function startRestTimer(seconds){
     updateTimerDisplay();
     if(timerRemaining<=0){
       clearInterval(timerInterval); timerInterval=null;
-      if(btn) btn.textContent = 'Готово! 🔔';
+      if(btn) btn.textContent = 'Готово!';
       if(ring) ring.classList.remove('active');
       try{ navigator.vibrate && navigator.vibrate([200,100,200]); }catch{}
       try{ const ctx=new (window.AudioContext||window.webkitAudioContext)(); const o=ctx.createOscillator(); o.frequency.value=880; o.connect(ctx.destination); o.start(); setTimeout(()=>o.stop(),400);}catch{}
@@ -995,7 +995,7 @@ function renderPlates(totalWeight, containerId){ const cont=document.getElementB
 let metroCtx=null, metroInterval=null;
 function startMetronome(tempo="3-0-1-0"){ stopMetronome(); const parts=tempo.split('-').map(Number); const phases=['Эксцентрика','Пауза','Концентрика','Пауза']; let phaseIdx=0, tick=0; const circle=document.getElementById('metronome-circle'); try{ metroCtx=new (window.AudioContext||window.webkitAudioContext)(); }catch{} metroInterval=setInterval(()=>{ tick++; if(circle){ circle.classList.add('active'); setTimeout(()=>circle.classList.remove('active'),180); const l=document.getElementById('metronome-phase'); if(l) l.textContent=phases[phaseIdx]+` ${tick}/${parts[phaseIdx]||1}`; } if(tick>= (parts[phaseIdx]||1)){ tick=0; phaseIdx=(phaseIdx+1)%parts.length; try{ const o=metroCtx.createOscillator(); o.frequency.value=phaseIdx===2?880:440; o.connect(metroCtx.destination); o.start(); setTimeout(()=>o.stop(),70);}catch{} } }, 1000); }
 function stopMetronome(){ if(metroInterval){ clearInterval(metroInterval); metroInterval=null; } if(metroCtx){ try{ metroCtx.close(); }catch{} metroCtx=null; } const c=document.getElementById('metronome-circle'); if(c) c.classList.remove('active'); }
-function buildShareText(){ const tonnage=Object.values(S.workoutSets||{}).flat().filter(s=>s.done).reduce((a,s)=>a+(s.weight*s.reps),0); const prLines=(S._newPRs||[]).map(p=>`🏆 Рекорд e1RM ${p.name}: ${p.e1rm}кг`).join('\n'); return [`🏋️ Antigravity — ${new Date().toLocaleDateString('ru-RU')}`,`👤 ${S.user?.name||''} • ${S.planData?.plan?.name||''} День ${S.selectedDay||''}`,`Тоннаж: ${tonnage.toFixed(1)} кг`,prLines,`Подходов: ${Object.values(S.workoutSets||{}).flat().filter(s=>s.done).length}`,`Antigravity 💜`].filter(Boolean).join('\n'); }
+function buildShareText(){ const tonnage=Object.values(S.workoutSets||{}).flat().filter(s=>s.done).reduce((a,s)=>a+(s.weight*s.reps),0); const prLines=(S._newPRs||[]).map(p=>`[PR] e1RM ${p.name}: ${p.e1rm}кг`).join('\n'); return [`ANTIGRAVITY — ${new Date().toLocaleDateString('ru-RU')}`,`Атлет: ${S.user?.name||''} • ${S.planData?.plan?.name||''} День ${S.selectedDay||''}`,`Тоннаж: ${tonnage.toFixed(1)} кг`,prLines,`Подходов: ${Object.values(S.workoutSets||{}).flat().filter(s=>s.done).length}`].filter(Boolean).join('\n'); }
 async function shareWorkout(){ const t=buildShareText(); try{ await navigator.clipboard.writeText(t); const b=document.getElementById('btn-share'); if(b){ const o=b.innerHTML; b.textContent='Скопировано!'; setTimeout(()=>b.innerHTML=o,1500);} }catch{ prompt('Скопируй отчет:', t); } }
 
 function renderWorkoutBadge() {
@@ -1328,11 +1328,11 @@ const CR = {
 };
 
 const EMOM_STATIONS = [
-  { name: '18 Махов гирей', reps: '18 повторений', icon: '🏋️', kg: '16–20 кг' },
-  { name: '15 Отжиманий от пола', reps: '15 повторений', icon: '💪', kg: '' },
-  { name: '14 Кубковых приседаний', reps: '14 повторений', icon: '🦵', kg: '12–16 кг' },
-  { name: '35сек Скалолаз', reps: '35 секунд', icon: '🧗', kg: '' },
-  { name: 'Отдых и восстановление', reps: '60 секунд', icon: '😮‍💨', kg: '' },
+  { name: '18 Махов гирей', reps: '18 повторений', kg: '16–20 кг' },
+  { name: '15 Отжиманий от пола', reps: '15 повторений', kg: '' },
+  { name: '14 Кубковых приседаний', reps: '14 повторений', kg: '12–16 кг' },
+  { name: '35сек Скалолаз', reps: '35 секунд', kg: '' },
+  { name: 'Отдых и восстановление', reps: '60 секунд', kg: '' },
 ];
 
 const PHASE_DURATIONS = [
@@ -1533,7 +1533,7 @@ function crUpdateEMOMDisplay() {
   const minuteNumEl = document.getElementById('cr-emom-minute-num');
 
   if (stationEl) {
-    stationEl.textContent = station.icon + ' МИНУТА ' + CR.emomMinute + ': ' + station.name;
+    stationEl.textContent = 'МИНУТА ' + CR.emomMinute + ': ' + station.name;
     // Flash animation
     stationEl.classList.remove('cr-flash');
     void stationEl.offsetWidth; // reflow
@@ -1596,7 +1596,7 @@ async function crFinishSession() {
     if (pCont) {
       pCont.innerHTML = `
         <div class="glass p-4 text-center" style="border-left:4px solid #F59E0B">
-          <div class="text-2xl mb-2">🔥</div>
+          <div class="mx-auto w-12 h-12 rounded-2xl flex items-center justify-center mb-2" style="background:linear-gradient(135deg,rgba(245,158,11,.25),rgba(239,68,68,.25))"><svg class="w-7 h-7" style="color:#F59E0B" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 22c4.4 0 7.5-3 7.5-7.2 0-3.1-2-5.6-3.7-7.2-.4-.4-1-.4-1.3.1-.9 1.4-1.9 2.5-3 3.3.3-2.3-.3-4.9-1.9-6.9-.4-.5-1.2-.4-1.5.2C6.6 6.6 4.5 9.6 4.5 14c0 4.2 3.1 8 7.5 8z"/></svg></div>
           <div class="text-white font-bold">Кардио-сессия завершена!</div>
           <div class="text-gray-400 text-sm mt-2">${totalMinutes} мин • EMOM ${CR.completedRounds}/3 раундов</div>
           <div class="text-gray-500 text-xs mt-1">${res.message || ''}</div>

@@ -75,7 +75,7 @@ function renderExerciseCards() {
     const methodHint = (ex.suggested_method && ex.suggested_method!=='normal') ? `<div class="text-[10px] text-pink/80 mb-2">Метод: ${ex.suggested_method} — ${ex.suggested_method==='drop_set'?'дроп-сет: снизь вес после отказа':ex.suggested_method==='rest_pause'?'rest-pause: 15с пауза и ещё подход':ex.suggested_method==='pyramid'?'пирамида: наращивай вес':ex.suggested_method==='amrap'?'AMRAP: максимум за время':ex.suggested_method==='emom'?'EMOM: каждую минуту':''}</div>` : '';
     let setsHTML = S.workoutSets[ex.exercise_id].map((s,i) => {
       const hintKey = String(ex.exercise_id)+':'+i;
-      const hint = S.setHints[hintKey] ? `<div class="text-[10px] text-green-400 font-bold px-2" style="grid-column:1/-1">${S.setHints[hintKey]}</div>` : '';
+      const hint = S.setHints[hintKey] ? `<div class="text-[10px] text-green-400 font-bold px-2 flex items-center gap-1" style="grid-column:1/-1"><svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 18h6M10 21h4M12 3a6 6 0 00-4 10.5c.8.7 1 1.5 1 2.5h6c0-1 .2-1.8 1-2.5A6 6 0 0012 3z"/></svg><span>${S.setHints[hintKey]}</span></div>` : '';
       return `
       <div class="set-row p-2 rounded-lg border border-transparent ${s.done?'done':''}">
         <span class="set-num">#${i+1}</span>
@@ -172,7 +172,7 @@ window.done = async (eid, idx) => {
     const sug = await suggestNextSet(ex || {exercise_id: eid, target_reps:'8-12', exercises:{}}, s);
     if(sug && sug.next_weight){
       next.weight = parseFloat(Number(sug.next_weight).toFixed(2));
-      if(sug.badge) S.setHints[String(eid)+':'+(idx+1)] = '💡 ' + sug.badge;
+      if(sug.badge) S.setHints[String(eid)+':'+(idx+1)] = sug.badge;
     }
   }
 
@@ -232,12 +232,12 @@ function renderSummary(res, sets){
   if (dEl) {
     const d = (res.tonnage_delta === null || res.tonnage_delta === undefined) ? null : Number(res.tonnage_delta);
     if (d === null || isNaN(d)) { dEl.textContent = '—'; dEl.style.color = '#9CA3AF'; }
-    else if (d > 0) { dEl.textContent = '+' + d.toLocaleString('ru-RU') + ' кг 🔥'; dEl.style.color = '#22C55E'; }
+    else if (d > 0) { dEl.textContent = '+' + d.toLocaleString('ru-RU') + ' кг'; dEl.style.color = '#22C55E'; }
     else if (d < 0) { dEl.textContent = d.toLocaleString('ru-RU') + ' кг'; dEl.style.color = '#F87171'; }
     else { dEl.textContent = '±0 кг'; dEl.style.color = '#9CA3AF'; }
   }
   const prs = Number(res.pr_count ?? (res.progressions || []).length);
-  if (prEl) prEl.textContent = prs + (prs ? ' 🏆' : '');
+  if (prEl) prEl.textContent = prs;
   if (stats) stats.textContent = 'Залогировано подходов: ' + (res.logged || sets.length);
   S._newPRs = [];
   const pCont = document.getElementById('progression-results');
@@ -249,22 +249,25 @@ function renderSummary(res, sets){
       let line;
       if (c.is_assisted) {
         line = 'Противовес: ' + c.cur_weight + ' кг → ' + (c.prev_assistance !== undefined ? c.prev_assistance + ' кг' : '?');
-        if (c.stronger) line = 'Противовес: ' + c.prev_assistance + ' кг → ' + c.cur_weight + ' кг (−' + c.assistance_delta + ' кг поддержки / Стал сильнее!) 🦾';
+        if (c.stronger) line = 'Противовес: ' + c.prev_assistance + ' кг → ' + c.cur_weight + ' кг (−' + c.assistance_delta + ' кг поддержки / Стал сильнее!)';
       } else if (c.weight_delta > 0) {
-        line = 'Вес: ' + c.prev_weight + ' кг → ' + c.cur_weight + ' кг (+' + c.weight_delta + ' кг) 🚀';
+        line = 'Вес: ' + c.prev_weight + ' кг → ' + c.cur_weight + ' кг (+' + c.weight_delta + ' кг)';
       } else if (c.reps_delta > 0) {
-        line = 'Повторения: ' + c.prev_reps + ' → ' + c.cur_reps + ' (+' + c.reps_delta + ' повт. в лучшем сете) ⚡';
+        line = 'Повторения: ' + c.prev_reps + ' → ' + c.cur_reps + ' (+' + c.reps_delta + ' повт. в лучшем сете)';
       } else {
         line = c.message || ('Вес: ' + c.cur_weight + ' кг × ' + c.cur_reps);
       }
       const e1 = (c.cur_e1rm !== undefined && c.cur_e1rm !== null) ? ' <span class="text-gray-500">| e1RM: ' + c.cur_e1rm + ' кг' + (c.is_pr ? ' (PR!)' : '') + '</span>' : '';
-      pCont.innerHTML += '<div class="glass p-3 flex items-start gap-2"><span class="text-lg">' + (c.is_pr ? '🏆' : '▫️') + '</span><div><div class="text-white font-bold text-sm">' + (c.name || 'Упражнение') + '</div><div class="text-xs text-gray-300 mt-0.5">' + line + e1 + '</div></div></div>';
+      const badge = c.is_pr
+        ? '<span class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style="background:linear-gradient(135deg,rgba(251,191,36,.25),rgba(236,72,153,.25))"><svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0V4zM7 6H4a1 1 0 00-1 1c0 2.2 1.8 4 4 4M17 6h3a1 1 0 011 1c0 2.2-1.8 4-4 4"/></svg></span>'
+        : '<span class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 bg-white/5"><span class="w-1.5 h-1.5 rounded-full bg-gray-500"></span></span>';
+      pCont.innerHTML += '<div class="glass p-3 flex items-start gap-2">' + badge + '<div><div class="text-white font-bold text-sm">' + (c.name || 'Упражнение') + '</div><div class="text-xs text-gray-300 mt-0.5">' + line + e1 + '</div></div></div>';
       if (c.is_pr) S._newPRs.push({ name: c.name, e1rm: c.cur_e1rm });
     });
   } else if (res.progressions && res.progressions.length) {
     res.progressions.forEach(p => {
       const eName = (S.dayExercises.find(e => String(e.exercise_id) === String(p.exercise_id)) || {}).exercises?.name || 'Упражнение';
-      pCont.innerHTML += '<div class="glass p-3">🏆 ' + eName + ': <span class="text-gray-400">' + p.old_weight + ' кг</span> → <span class="text-green-400 font-bold">' + p.new_weight + ' кг</span></div>';
+      pCont.innerHTML += '<div class="glass p-3 flex items-start gap-2"><span class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style="background:linear-gradient(135deg,rgba(251,191,36,.25),rgba(236,72,153,.25))"><svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0V4zM7 6H4a1 1 0 00-1 1c0 2.2 1.8 4 4 4M17 6h3a1 1 0 011 1c0 2.2-1.8 4-4 4"/></svg></span><div><div class="text-white font-bold text-sm">' + eName + '</div><div class="text-xs text-gray-300 mt-0.5"><span class="text-gray-400">' + p.old_weight + ' кг</span> → <span class="text-green-400 font-bold">' + p.new_weight + ' кг</span></div></div></div>';
     });
   }
 }

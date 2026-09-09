@@ -212,7 +212,7 @@ async function loadPlans() {
           <div class="text-gray-400 text-sm mt-1">${plan.description}</div>
           <div class="text-xs text-gray-500 mt-2">${(plan.tags || []).map(t => `<span class="px-2 py-0.5 bg-purple/20 rounded text-purple mr-1">${t}</span>`).join('')}</div>
         </div>
-        ${isCurrent ? '<span class="text-green-400 text-2xl">✓</span>' : ''}
+        ${isCurrent ? '<span class="text-green-400"><svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></span>' : ''}
       </div>
     `;
     if (!isCurrent) {
@@ -267,7 +267,7 @@ function renderDayButtons() {
             <svg class="w-5 h-5" style="color:#F59E0B" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 6.75 6.75 0 009 18.75a6.768 6.768 0 006.362-13.536z"/></svg>
           </div>
           <div class="flex-1">
-            <div class="font-bold uppercase text-xs mb-0.5" style="color:#F59E0B">⚡ Кардио-день</div>
+            <div class="font-bold uppercase text-xs mb-0.5 flex items-center gap-1" style="color:#F59E0B"><svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>Кардио-день</div>
             <div class="text-white font-bold text-sm">Жиросжигание & Выносливость</div>
             <div class="text-gray-500 text-[11px] mt-0.5">LISS 15м → EMOM MetCon 15м → Заминка 15м • ~45 мин</div>
           </div>
