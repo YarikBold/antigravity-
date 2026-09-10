@@ -133,7 +133,7 @@ function renderBench(){
         <div class="text-right">
           <div class="text-gray-400 text-xs">Цель цикла</div>
           <div class="text-white font-bold">${d.target.min}–${d.target.max} кг</div>
-          <div class="text-xs ${inTarget ? 'text-green-400' : 'text-yellow-400'} flex items-center gap-1">${inTarget ? '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg><span>Цель достигнута!</span>' : `<span>${(d.target.min - d.base_1rm).toFixed(1)} кг до цели</span>`}</div>
+          <div class="text-xs ${inTarget ? 'text-green-400' : 'text-yellow-400'} flex items-center gap-1">${inTarget ? '<i data-lucide="target" class="w-3.5 h-3.5"></i><span>Цель достигнута!</span>' : `<span>${(d.target.min - d.base_1rm).toFixed(1)} кг до цели</span>`}</div>
         </div>
       </div>
       <div class="text-xs text-gray-500">Старт от рекорда 75×3 → e1RM 82.5 кг. AMRAP: ${d.amrap.rule}</div>
@@ -150,6 +150,7 @@ function renderBench(){
       </div>
     `).join('')}
   `;
+  if (typeof refreshIcons === 'function') refreshIcons();
 }
 
 function monthName(m){ return ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'][m-1]; }
@@ -158,7 +159,7 @@ function bcCellHTML(cell){
   if(cell.type === 'info'){
     return `<div class="bc-card info"><div class="bc-dnum">${cell.day} (${cell.dow})</div><div class="bc-ofp">${cell.title}</div></div>`;
   }
-  const amrapBadge = cell.amrap ? '<span class="bc-amrap flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 22c4.4 0 7.5-3 7.5-7.2 0-3.1-2-5.6-3.7-7.2-.4-.4-1-.4-1.3.1-.9 1.4-1.9 2.5-3 3.3.3-2.3-.3-4.9-1.9-6.9-.4-.5-1.2-.4-1.5.2C6.6 6.6 4.5 9.6 4.5 14c0 4.2 3.1 8 7.5 8z"/></svg>AMRAP</span>' : '';
+  const amrapBadge = cell.amrap ? '<span class="bc-amrap flex items-center gap-1"><i data-lucide="flame" class="w-3 h-3"></i>AMRAP</span>' : '';
   const delta = cell.percent_delta > 0 ? `<span class="text-[9px] text-yellow-400">+${cell.percent_delta}%</span>` : '';
   return `
     <div class="bc-card ${cell.type} ${cell.logged ? 'done-day' : ''}">
@@ -206,10 +207,12 @@ async function bcSave(){
     if(r.boosted){
       BC_STATE.base = r.new_base;
       localStorage.setItem('bc_base_1rm', String(r.new_base));
-      res.innerHTML = `<div class="text-green-400 font-bold text-sm flex items-center gap-1"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg><span>${r.message}</span></div><div class="text-gray-400 text-xs mt-1">Календарь пересчитан под новые рабочие веса</div>`;
+      res.innerHTML = `<div class="text-green-400 font-bold text-sm flex items-center gap-1"><i data-lucide="trending-up" class="w-4 h-4"></i><span>${r.message}</span></div><div class="text-gray-400 text-xs mt-1">Календарь пересчитан под новые рабочие веса</div>`;
+      if (typeof refreshIcons === 'function') refreshIcons();
       setTimeout(async ()=>{ bcCloseModal(); await loadBench(); }, 1600);
     } else {
-      res.innerHTML = `<div class="text-green-400 text-sm flex items-center gap-1"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>${r.message}</span></div>`;
+      res.innerHTML = `<div class="text-green-400 text-sm flex items-center gap-1"><i data-lucide="check" class="w-4 h-4"></i><span>${r.message}</span></div>`;
+      if (typeof refreshIcons === 'function') refreshIcons();
       setTimeout(async ()=>{ bcCloseModal(); await loadBench(); }, 900);
     }
   }catch(e){

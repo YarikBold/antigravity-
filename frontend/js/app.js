@@ -2,7 +2,9 @@
 const S = {
   userId: null, user: null, planData: null,
   selectedDay: null, dayExercises: [], workoutSets: {}, lastWeights: {},
-  _pendingSubs: [], _newPRs: [], setHints: {}, workoutLogs: []
+  _pendingSubs: [], _newPRs: [], setHints: {}, workoutLogs: [],
+  progress: { completed_days: {}, next_pending_day: null },
+  has_completed_finisher: false
 };
 
 async function api(path, opts={}) {
@@ -16,12 +18,25 @@ async function api(path, opts={}) {
   return r.json();
 }
 
+function refreshIcons() {
+  try { if (window.lucide) lucide.createIcons(); } catch (e) {}
+}
+
+function highlightTab(id) {
+  const map = { dashboard: 'dashboard', 'bench-calendar': 'bench-calendar', 'cardio-runner': 'cardio-runner' };
+  document.querySelectorAll('#main-tabs [data-tab]').forEach(b => {
+    b.classList.toggle('tab-active', map[id] === b.getAttribute('data-tab'));
+  });
+}
+
 function showSection(id) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   const el = document.getElementById(id);
   if (el) el.classList.add('active');
   const header = document.getElementById('app-header');
   if (header) header.classList.toggle('hidden', id === 'profile-select');
+  highlightTab(id);
+  refreshIcons();
   if (id === 'pullup-plan' && typeof renderPullupPlan === 'function') renderPullupPlan();
   if (id === 'plan-select' && typeof loadPlans === 'function') loadPlans();
   if (id === 'bench-calendar' && typeof loadBench === 'function') {
@@ -38,9 +53,52 @@ function showSection(id) {
 
 const LEGACY_MAP = { '1': '11111111-1111-1111-1111-111111111111', '2': '22222222-2222-2222-2222-222222222222' };
 function normalizeUid(uid){ uid = String(uid); return LEGACY_MAP[uid] || uid; }
+
+// --- Прогресс дней: completed_days {day: {completed, logged_at}} + next_pending_day ---
+function progressKey(){ return 'ag_progress_' + (S.userId || 'nouser'); }
+function loadProgress() {
+  S.progress = { completed_days: {}, next_pending_day: null };
+  try {
+    const raw = localStorage.getItem(progressKey());
+    if (raw) {
+      const p = JSON.parse(raw);
+      if (p && p.completed_days) S.progress.completed_days = p.completed_days;
+      if (p && p.next_pending_day !== undefined) S.progress.next_pending_day = p.next_pending_day;
+    }
+  } catch (e) {}
+  return S.progress;
+}
+function saveProgress() {
+  try { localStorage.setItem(progressKey(), JSON.stringify(S.progress || { completed_days: {}, next_pending_day: null })); } catch (e) {}
+}
+function mergeServerProgress(server) {
+  if (!server) return;
+  S.progress = S.progress || { completed_days: {}, next_pending_day: null };
+  const srv = server.completed_days || {};
+  Object.keys(srv).forEach(d => { S.progress.completed_days[String(d)] = srv[d]; });
+  if (server.next_pending_day !== undefined && server.next_pending_day !== null) {
+    S.progress.next_pending_day = server.next_pending_day;
+  } else {
+    S.progress.next_pending_day = calcNextPendingDay();
+  }
+  saveProgress();
+}
+function calcNextPendingDay() {
+  const days = S.planData ? Array.from(new Set(S.planData.exercises.map(e => e.day_number))).sort((a, b) => a - b) : [];
+  const done = S.progress ? S.progress.completed_days : {};
+  const nxt = days.find(d => !(done && done[String(d)] && done[String(d)].completed));
+  return nxt !== undefined ? nxt : (days.length ? days[0] : null);
+}
+function markDayCompleted(dayNumber) {
+  S.progress = S.progress || { completed_days: {}, next_pending_day: null };
+  S.progress.completed_days[String(dayNumber)] = { completed: true, logged_at: new Date().toISOString() };
+  S.progress.next_pending_day = calcNextPendingDay();
+  saveProgress();
+}
 async function selectProfile(uid) {
   uid = normalizeUid(uid);
   S.userId = uid; localStorage.setItem('ag_uid', uid);
+  loadProgress();
   showSection('loading-screen');
   try {
     S.user = await api('/api/user/' + uid);
@@ -83,6 +141,11 @@ async function loadDashboard() {
 
   try { S.workoutLogs = await api('/api/logs/' + S.userId); } catch(e){ S.workoutLogs = []; console.warn('logs failed', e); }
 
+  try {
+    const q = '/api/workouts/completed-days/' + S.userId + '?plan_id=' + encodeURIComponent(S.user.current_plan_id || '');
+    mergeServerProgress(await api(q));
+  } catch(e){ S.progress.next_pending_day = calcNextPendingDay(); saveProgress(); }
+
   renderCalendar();
   renderDayButtons();
   showSection('dashboard');
@@ -122,9 +185,11 @@ function renderCalendar() {
   if (monthLabel) monthLabel.textContent =
     monthNames[calWeekStart.getMonth()] + ' ' + calWeekStart.getFullYear();
 
+  const localKey = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   const hasLogForDate = (date) => {
-    const dateStr = date.toISOString().split('T')[0];
-    return logs.some(log => log.date.startsWith(dateStr));
+    // Локальная дата без UTC-сдвига toISOString (иначе +3ч красит соседний день)
+    const dateStr = localKey(date);
+    return logs.some(log => String(log.date || '').startsWith(dateStr));
   };
 
   for(let i = 0; i < 7; i++) {
@@ -212,7 +277,7 @@ async function loadPlans() {
           <div class="text-gray-400 text-sm mt-1">${plan.description}</div>
           <div class="text-xs text-gray-500 mt-2">${(plan.tags || []).map(t => `<span class="px-2 py-0.5 bg-purple/20 rounded text-purple mr-1">${t}</span>`).join('')}</div>
         </div>
-        ${isCurrent ? '<span class="text-green-400"><svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></span>' : ''}
+        ${isCurrent ? '<span class="text-green-400"><i data-lucide="check" class="w-6 h-6"></i></span>' : ''}
       </div>
     `;
     if (!isCurrent) {
@@ -220,6 +285,7 @@ async function loadPlans() {
     }
     cont.appendChild(btn);
   });
+  refreshIcons();
 }
 
 async function selectPlan(planId) {
@@ -235,14 +301,6 @@ function dayLabelText(d) {
   const isFullBodyAB = S.planData?.plan?.split_type === 'full_body';
   if (isFullBodyAB) return 'День ' + (d === 1 ? 'А' : d === 2 ? 'Б' : d);
   return 'День ' + d;
-}
-
-async function fetchCompletedDays() {
-  try {
-    const q = '/api/workouts/completed-days/' + S.userId + '?plan_id=' + encodeURIComponent(S.user.current_plan_id || '');
-    const r = await api(q);
-    return r.completed_days || [];
-  } catch (e) { return []; }
 }
 
 function renderDayButtons() {
@@ -267,34 +325,45 @@ function renderDayButtons() {
             <svg class="w-5 h-5" style="color:#F59E0B" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 6.75 6.75 0 009 18.75a6.768 6.768 0 006.362-13.536z"/></svg>
           </div>
           <div class="flex-1">
-            <div class="font-bold uppercase text-xs mb-0.5 flex items-center gap-1" style="color:#F59E0B"><svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>Кардио-день</div>
+            <div class="font-bold uppercase text-xs mb-0.5 flex items-center gap-1" style="color:#F59E0B"><i data-lucide="zap" class="w-3.5 h-3.5"></i>Кардио-день</div>
             <div class="text-white font-bold text-sm">Жиросжигание & Выносливость</div>
             <div class="text-gray-500 text-[11px] mt-0.5">LISS 15м → EMOM MetCon 15м → Заминка 15м • ~45 мин</div>
+            <div class="day-badge"></div>
           </div>
         </div>`;
       btn.onclick = () => launchCardioRunner();
     } else {
       btn.className = 'glass p-4 text-left card-hover';
-      btn.innerHTML = `<div class="text-purple font-bold uppercase text-xs mb-1">${dayLabelText(d)}</div><div class="text-white font-bold">Начать</div>`;
+      btn.innerHTML = `<div class="text-purple font-bold uppercase text-xs mb-1">${dayLabelText(d)}</div><div class="text-white font-bold">Начать</div><div class="day-badge"></div>`;
       btn.onclick = () => initReadiness(d);
     }
     cont.appendChild(btn);
   });
 
-  // Подсветка: зелёный — ТОЛЬКО выполненный day_number; следующий — фиолетовый акцент
-  fetchCompletedDays().then(done => {
-    const doneSet = new Set((done || []).map(Number));
-    if (!doneSet.size) return;
-    doneSet.forEach(d => {
-      const el = cont.querySelector('[data-day="' + d + '"]');
-      if (el) { el.style.borderColor = 'rgba(34,197,94,.55)'; el.style.background = 'rgba(34,197,94,.10)'; }
-    });
-    const next = days.find(d => !doneSet.has(Number(d)));
-    if (next !== undefined) {
-      const el = cont.querySelector('[data-day="' + next + '"]');
-      if (el && !doneSet.has(Number(next))) { el.style.borderColor = 'rgba(139,92,246,.55)'; }
+  // Строгие статусы: зелёный ТОЛЬКО если day in completed_days;
+  // индиго — ТОЛЬКО next_pending_day; остальные — серые будущие.
+  const done = (S.progress && S.progress.completed_days) || {};
+  const nxt = (S.progress && S.progress.next_pending_day !== undefined)
+    ? S.progress.next_pending_day
+    : days.find(d => !(done[String(d)] && done[String(d)].completed));
+  days.forEach(d => {
+    const el = cont.querySelector('[data-day="' + d + '"]');
+    if (!el) return;
+    const isDone = !!(done[String(d)] && done[String(d)].completed);
+    const badge = el.querySelector('.day-badge');
+    el.classList.remove('day-done', 'day-next', 'day-future');
+    if (isDone) {
+      el.classList.add('day-done');
+      if (badge) badge.innerHTML = '<span class="day-badge done"><i data-lucide="check" class="w-3 h-3"></i>Выполнено</span>';
+    } else if (String(nxt) === String(d)) {
+      el.classList.add('day-next');
+      if (badge) badge.innerHTML = '<span class="day-badge next">К выполнению</span>';
+    } else {
+      el.classList.add('day-future');
+      if (badge) badge.innerHTML = '';
     }
-  }).catch(() => {});
+  });
+  refreshIcons();
 }
 
 // --- Readiness flow (DOMS + AI) ---

@@ -57,14 +57,14 @@ function crTogglePause(){
     cr.paused = true;
     cr.pauseStart = Date.now();
     if(cr.timer){ clearInterval(cr.timer); cr.timer = null; }
-    if(btn) btn.innerHTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg><span>Продолжить</span>';
+    if(btn) { btn.innerHTML = '<i data-lucide="play" class="w-4 h-4"></i><span>Продолжить</span>'; refreshIcons(); }
   } else {
     const gap = Date.now() - cr.pauseStart;
     cr.phaseStart += gap;
     cr.minuteStart += gap;
     cr.minuteEndAt += gap;
     cr.paused = false;
-    if(btn) btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" d="M9 5v14M15 5v14"/></svg><span>Пауза</span>';
+    if(btn) { btn.innerHTML = '<i data-lucide="pause" class="w-4 h-4"></i><span>Пауза</span>'; refreshIcons(); }
     cr.timer = setInterval(crTick, 250);
     crTick();
   }
@@ -121,10 +121,11 @@ function crRenderLISS(plan, title){
         <div class="cr-hint">${plan.hint}</div>
       </div>
       <div class="flex gap-2 w-full">
-        <button id="cr-btn-pause" onclick="crTogglePause()" class="btn-ghost flex-1 flex items-center justify-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" d="M9 5v14M15 5v14"/></svg><span>Пауза</span></button>
+        <button id="cr-btn-pause" onclick="crTogglePause()" class="btn-ghost flex-1 flex items-center justify-center gap-2"><i data-lucide="pause" class="w-4 h-4"></i><span>Пауза</span></button>
         <button onclick="crNextPhase()" class="btn-ghost flex-1">Пропустить фазу →</button>
       </div>
     </div>`;
+  if (typeof refreshIcons === 'function') refreshIcons();
 }
 
 function crEnterMinute(){
@@ -146,7 +147,7 @@ function crRenderEMOMMinute(){
   if(el) el.innerHTML = `
     <div class="flex-1 flex flex-col items-center justify-center gap-3 w-full max-w-md mx-auto">
       <div class="cr-round-badge" style="background:rgba(236,72,153,.15);color:#F472B6">Круг ${cr.round}/3 • Мин ${((cr.round-1)*5 + cr.stationIdx + 1)}/15</div>
-      <div class="cr-station text-center ${st.name==='Отдых' ? 'text-gray-300' : 'text-white'} flex items-center justify-center gap-2">${st.name==='Отдых' ? '<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg><span>Отдых</span>' : st.name}</div>
+      <div class="cr-station text-center ${st.name==='Отдых' ? 'text-gray-300' : 'text-white'} flex items-center justify-center gap-2">${st.name==='Отдых' ? '<i data-lucide="moon" class="w-6 h-6"></i><span>Отдых</span>' : st.name}</div>
       <div class="cr-minute-timer text-white" id="cr-timer">01:00</div>
       <div class="progress-bar w-full"><div id="cr-bar" style="width:0%"></div></div>
       <div class="glass p-3 w-full text-center">
@@ -155,12 +156,13 @@ function crRenderEMOMMinute(){
         <div class="cr-hint mt-1">${st.hint}</div>
       </div>
       <div class="flex gap-2 w-full">
-        <button id="cr-btn-pause" onclick="crTogglePause()" class="btn-ghost flex-1 flex items-center justify-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" d="M9 5v14M15 5v14"/></svg><span>Пауза</span></button>
+        <button id="cr-btn-pause" onclick="crTogglePause()" class="btn-ghost flex-1 flex items-center justify-center gap-2"><i data-lucide="pause" class="w-4 h-4"></i><span>Пауза</span></button>
         <button onclick="crNextPhase()" class="btn-ghost flex-1">Закончить EMOM →</button>
       </div>
     </div>`;
   // Предупреждающие бипы на последних 3 секундах минуты
   AGAudio.beep(660, 120);
+  if (typeof refreshIcons === 'function') refreshIcons();
 }
 
 function crTick(){
@@ -204,8 +206,9 @@ async function crFinish(auto){
   if(cr.timer){ clearInterval(cr.timer); cr.timer = null; }
   const btnId = 'cr-finish-btn';
   const el = document.getElementById('cr-body');
-  if(el) el.innerHTML = `<div class="text-center flex flex-col items-center gap-3"><div class="mx-auto w-14 h-14 rounded-2xl flex items-center justify-center" style="background:linear-gradient(135deg,rgba(245,158,11,.25),rgba(239,68,68,.25))"><svg class="w-8 h-8" style="color:#F59E0B" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 22c4.4 0 7.5-3 7.5-7.2 0-3.1-2-5.6-3.7-7.2-.4-.4-1-.4-1.3.1-.9 1.4-1.9 2.5-3 3.3.3-2.3-.3-4.9-1.9-6.9-.4-.5-1.2-.4-1.5.2C6.6 6.6 4.5 9.6 4.5 14c0 4.2 3.1 8 7.5 8z"/></svg></div><div class="text-white font-bold text-xl">${auto ? 'Кардио завершено!' : 'Кардио-сессия'}</div><div class="text-gray-400 text-sm">LISS + EMOM + LISS выполнено</div><div class="glass p-3 w-full max-w-xs text-left text-sm space-y-1"><div class="flex justify-between"><span class="text-gray-400">Тип сессии</span><span class="text-white font-bold">cardio</span></div><div class="flex justify-between"><span class="text-gray-400">Длительность</span><span class="text-white font-bold" id="cr-done-min">~45 мин</span></div><div class="flex justify-between"><span class="text-gray-400">RPE</span><span class="text-white font-bold">7-8</span></div></div><button id="${btnId}" onclick="crSave()" class="btn-primary flex items-center justify-center gap-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Сохранить тренировку</button></div>`;
+  if(el) el.innerHTML = `<div class="text-center flex flex-col items-center gap-3"><div class="mx-auto w-14 h-14 rounded-2xl flex items-center justify-center" style="background:linear-gradient(135deg,rgba(245,158,11,.25),rgba(239,68,68,.25))"><i data-lucide="flame" class="w-8 h-8" style="color:#F59E0B"></i></div><div class="text-white font-bold text-xl">${auto ? 'Кардио завершено!' : 'Кардио-сессия'}</div><div class="text-gray-400 text-sm">LISS + EMOM + LISS выполнено</div><div class="glass p-3 w-full max-w-xs text-left text-sm space-y-1"><div class="flex justify-between"><span class="text-gray-400">Тип сессии</span><span class="text-white font-bold">cardio</span></div><div class="flex justify-between"><span class="text-gray-400">Длительность</span><span class="text-white font-bold" id="cr-done-min">~45 мин</span></div><div class="flex justify-between"><span class="text-gray-400">RPE</span><span class="text-white font-bold">7-8</span></div></div><button id="${btnId}" onclick="crSave()" class="btn-primary flex items-center justify-center gap-2"><i data-lucide="check" class="w-5 h-5"></i> Сохранить тренировку</button></div>`;
   AGAudio.beep(880, 400);
+  if (typeof refreshIcons === 'function') refreshIcons();
 }
 
 async function crSave(){

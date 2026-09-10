@@ -17,19 +17,31 @@ body{background:#121212;color:#e5e7eb;font-family:'Inter',system-ui,sans-serif;m
 .btn-primary:active{transform:scale(.96)}
 .btn-primary:disabled{opacity:.6}
 .btn-ghost{background:rgba(139,92,246,.12);color:#A78BFA;border:1px solid rgba(139,92,246,.2);border-radius:12px;padding:10px 20px;font-weight:500;cursor:pointer;transition:all .2s}
-.input-dark{background:rgba(42,42,62,.6);border:1px solid rgba(139,92,246,.15);border-radius:10px;color:#e5e7eb;padding:10px 14px;font-size:15px;width:100%;transition:border-color .2s}
+.input-dark{background:rgba(42,42,62,.6);border:1px solid rgba(139,92,246,.15);border-radius:10px;color:#e5e7eb;padding:10px 14px;font-size:16px;width:100%;transition:border-color .2s}
 .input-dark:focus{outline:none;border-color:#8B5CF6}
-.set-row{display:grid !important;grid-template-columns:26px 1fr 12px 1fr 26px 42px 60px 34px;gap:6px;align-items:center;flex-wrap:nowrap !important}
+/* Строка подхода (mobile-first): [#] [вес] × [повт] [RIR] [метод] [✓] — 375px без скролла */
+.set-row{display:grid !important;grid-template-columns:24px 1fr 10px 1fr 52px 60px 44px;gap:5px;align-items:center;flex-wrap:nowrap !important}
 .set-row.done{opacity:.5;background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.3)}
 .set-row .set-num{font-size:12px;color:#6B7280;text-align:left;white-space:nowrap}
 .set-row .set-x{font-size:12px;color:#6B7280;text-align:center}
-.set-row .set-rir-label{font-size:10px;color:#6B7280;text-align:center;white-space:nowrap}
-.set-row input,.set-row select{min-width:0;width:100%;margin:0}
-.set-row input[type=number]{-moz-appearance:textfield;appearance:textfield;color:#fff;font-weight:700;font-size:15px;font-family:'Inter',monospace;text-align:center;padding:8px 2px}
+.set-row input,.set-row select{min-width:0;width:100%;margin:0;min-height:44px}
+.set-row input[type=number]{-moz-appearance:textfield;appearance:textfield;color:#fff;font-weight:700;font-size:16px;font-family:'Inter',monospace;text-align:center;padding:8px 2px}
 .set-row input::-webkit-outer-spin-button,.set-row input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .set-row input::placeholder{color:#4B5563;font-weight:400}
-.set-row select{font-size:11px;padding:8px 2px;text-align:center;color:#A78BFA}
-.set-row .set-done{width:34px;height:34px;flex-shrink:0}
+.set-row select{font-size:13px;padding:8px 1px;text-align:center;color:#A78BFA;background:rgba(42,42,62,.6);border:1px solid rgba(139,92,246,.15);border-radius:10px}
+.set-row .set-done{width:44px;height:44px;flex-shrink:0}
+/* Состояния карточек дней программы */
+.day-done{border-color:rgba(16,185,129,.5) !important;background:rgba(6,78,59,.2) !important}
+.day-next{border-color:#6366F1 !important;background:#111827 !important;box-shadow:0 0 0 1px rgba(99,102,241,.4)}
+.day-future{border-color:rgba(31,41,55,.8) !important;background:rgba(3,7,18,.4) !important;opacity:.6}
+.day-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:800;margin-top:4px}
+.day-badge.done{color:#34D399}
+.day-badge.next{color:#fff;background:#4F46E5;border-radius:6px;padding:1px 8px}
+/* Сегмент-контроль без скроллбара */
+.scrollbar-none{scrollbar-width:none;-ms-overflow-style:none}
+.scrollbar-none::-webkit-scrollbar{display:none}
+#main-tabs button{color:#9CA3AF}
+#main-tabs button.tab-active{background:rgba(139,92,246,.18);color:#A78BFA}
 .muscle-chip{transition:all .15s;user-select:none}
 .muscle-chip.active{background:linear-gradient(135deg,#8B5CF6,#EC4899);color:#fff;border-color:transparent;box-shadow:0 4px 16px rgba(139,92,246,.35)}
 /* Pain slider - rainbow */
@@ -108,14 +120,12 @@ body{background:#121212;color:#e5e7eb;font-family:'Inter',system-ui,sans-serif;m
 #finisher-block{transition:border-color .3s, box-shadow .3s}
 #day-buttons [data-day]{transition:border-color .25s, background .25s}
 
-/* === Mobile adaptation (<=420px) === */
+/* === Mobile adaptation (<=420px): шрифтfall input 16px сохраняется (защита от iOS-зума) === */
 @media (max-width:420px){
   .cr-timer{font-size:52px;letter-spacing:-1px}
   .cr-minute-timer{font-size:42px}
   .cr-station{font-size:18px}
-  .set-row{grid-template-columns:22px 1fr 10px 1fr 24px 38px 54px 32px;gap:4px}
-  .set-row input[type=number]{font-size:14px;padding:7px 1px}
-  .set-row select{font-size:10px;padding:7px 1px}
+  .set-row{grid-template-columns:20px 1fr 8px 1fr 48px 56px 44px;gap:4px}
   .glass{border-radius:14px}
   .btn-primary{padding:13px 18px;font-size:14px}
 }

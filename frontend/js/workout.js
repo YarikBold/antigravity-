@@ -75,17 +75,17 @@ function renderExerciseCards() {
     const methodHint = (ex.suggested_method && ex.suggested_method!=='normal') ? `<div class="text-[10px] text-pink/80 mb-2">Метод: ${ex.suggested_method} — ${ex.suggested_method==='drop_set'?'дроп-сет: снизь вес после отказа':ex.suggested_method==='rest_pause'?'rest-pause: 15с пауза и ещё подход':ex.suggested_method==='pyramid'?'пирамида: наращивай вес':ex.suggested_method==='amrap'?'AMRAP: максимум за время':ex.suggested_method==='emom'?'EMOM: каждую минуту':''}</div>` : '';
     let setsHTML = S.workoutSets[ex.exercise_id].map((s,i) => {
       const hintKey = String(ex.exercise_id)+':'+i;
-      const hint = S.setHints[hintKey] ? `<div class="text-[10px] text-green-400 font-bold px-2 flex items-center gap-1" style="grid-column:1/-1"><svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 18h6M10 21h4M12 3a6 6 0 00-4 10.5c.8.7 1 1.5 1 2.5h6c0-1 .2-1.8 1-2.5A6 6 0 0012 3z"/></svg><span>${S.setHints[hintKey]}</span></div>` : '';
+      const hint = S.setHints[hintKey] ? `<div class="text-[10px] text-green-400 font-bold px-2 flex items-center gap-1" style="grid-column:1/-1"><i data-lucide="lightbulb" class="w-3.5 h-3.5 flex-shrink-0"></i><span>${S.setHints[hintKey]}</span></div>` : '';
+      const rirOpts = [0,1,2,3,4,5].map(v => `<option value="${v}" ${Number(s.rir)===v?'selected':''}>${v}</option>`).join('');
       return `
       <div class="set-row p-2 rounded-lg border border-transparent ${s.done?'done':''}">
         <span class="set-num">#${i+1}</span>
-        <input type="number" step="0.5" inputmode="decimal" value="${s.weight !== '' ? s.weight : ''}" placeholder="${last ? last.weight : '0'}" class="input-dark" onchange="upd('${ex.exercise_id}',${i},'weight',this.value)">
+        <input type="number" step="0.5" inputmode="decimal" value="${s.weight !== '' ? s.weight : ''}" placeholder="${last ? last.weight : '0'}" class="input-dark" onchange="upd('${ex.exercise_id}',${i},'weight',this.value)" aria-label="Вес">
         <span class="set-x">×</span>
-        <input type="number" inputmode="numeric" value="${s.reps !== '' ? s.reps : ''}" placeholder="${last ? last.reps : '0'}" class="input-dark" onchange="upd('${ex.exercise_id}',${i},'reps',this.value)">
-        <span class="set-rir-label">RIR</span>
-        <input type="number" inputmode="numeric" min="0" max="5" value="${s.rir !== '' ? s.rir : ''}" placeholder="${last ? last.rir : 2}" class="input-dark" onchange="upd('${ex.exercise_id}',${i},'rir',this.value)">
-        <select onchange="upd('${ex.exercise_id}',${i},'set_type',this.value)" class="input-dark"><option value="normal" ${s.set_type==='normal'?'selected':''}>norm</option><option value="drop_set" ${s.set_type==='drop_set'?'selected':''}>drop</option><option value="rest_pause" ${s.set_type==='rest_pause'?'selected':''}>rest</option><option value="pyramid" ${s.set_type==='pyramid'?'selected':''}>pyr</option></select>
-        <button type="button" onclick="done('${ex.exercise_id}',${i})" title="${s.done?'Отменить подход — вернуть на перезапись':'Завершить подход'}" class="set-done rounded ${s.done?'!bg-red-500/15 !text-red-400':'bg-purple/20 text-purple'} flex items-center justify-center" ${s.done?'style="background:rgba(239,68,68,.15) !important;color:#F87171 !important"':''}>${s.done?'<span class="text-base font-black">↩</span>':'<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>'}</button>
+        <input type="number" inputmode="numeric" value="${s.reps !== '' ? s.reps : ''}" placeholder="${last ? last.reps : '0'}" class="input-dark" onchange="upd('${ex.exercise_id}',${i},'reps',this.value)" aria-label="Повторения">
+        <select onchange="upd('${ex.exercise_id}',${i},'rir',this.value)" class="input-dark" aria-label="RIR" title="RIR — повторов в запасе">${rirOpts}</select>
+        <select onchange="upd('${ex.exercise_id}',${i},'set_type',this.value)" class="input-dark" aria-label="Метод"><option value="normal" ${s.set_type==='normal'?'selected':''}>norm</option><option value="drop_set" ${s.set_type==='drop_set'?'selected':''}>drop</option><option value="rest_pause" ${s.set_type==='rest_pause'?'selected':''}>rest</option><option value="pyramid" ${s.set_type==='pyramid'?'selected':''}>pyr</option></select>
+        <button type="button" onclick="done('${ex.exercise_id}',${i})" title="${s.done?'Отменить подход — вернуть на перезапись':'Завершить подход'}" class="set-done rounded ${s.done?'!bg-red-500/15 !text-red-400':'bg-purple/20 text-purple'} flex items-center justify-center" ${s.done?'style="background:rgba(239,68,68,.15) !important;color:#F87171 !important"':''}>${s.done?'<i data-lucide="rotate-ccw" class="w-4 h-4"></i>':'<i data-lucide="check" class="w-4 h-4"></i>'}</button>
         ${hint}
       </div>`;
     }).join('');
@@ -98,6 +98,7 @@ function renderExerciseCards() {
     const dismissed = localStorage.getItem('prog_hint_dismissed') === '1';
     hint.classList.toggle('hidden', dismissed);
   }
+  if (typeof refreshIcons === 'function') refreshIcons();
 }
 
 window.upd = (eid, idx, field, val) => {
@@ -259,7 +260,7 @@ function renderSummary(res, sets){
       }
       const e1 = (c.cur_e1rm !== undefined && c.cur_e1rm !== null) ? ' <span class="text-gray-500">| e1RM: ' + c.cur_e1rm + ' кг' + (c.is_pr ? ' (PR!)' : '') + '</span>' : '';
       const badge = c.is_pr
-        ? '<span class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style="background:linear-gradient(135deg,rgba(251,191,36,.25),rgba(236,72,153,.25))"><svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0V4zM7 6H4a1 1 0 00-1 1c0 2.2 1.8 4 4 4M17 6h3a1 1 0 011 1c0 2.2-1.8 4-4 4"/></svg></span>'
+        ? '<span class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style="background:linear-gradient(135deg,rgba(251,191,36,.25),rgba(236,72,153,.25))"><i data-lucide="trophy" class="w-5 h-5 text-yellow-400"></i></span>'
         : '<span class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 bg-white/5"><span class="w-1.5 h-1.5 rounded-full bg-gray-500"></span></span>';
       pCont.innerHTML += '<div class="glass p-3 flex items-start gap-2">' + badge + '<div><div class="text-white font-bold text-sm">' + (c.name || 'Упражнение') + '</div><div class="text-xs text-gray-300 mt-0.5">' + line + e1 + '</div></div></div>';
       if (c.is_pr) S._newPRs.push({ name: c.name, e1rm: c.cur_e1rm });
@@ -267,9 +268,10 @@ function renderSummary(res, sets){
   } else if (res.progressions && res.progressions.length) {
     res.progressions.forEach(p => {
       const eName = (S.dayExercises.find(e => String(e.exercise_id) === String(p.exercise_id)) || {}).exercises?.name || 'Упражнение';
-      pCont.innerHTML += '<div class="glass p-3 flex items-start gap-2"><span class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style="background:linear-gradient(135deg,rgba(251,191,36,.25),rgba(236,72,153,.25))"><svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0V4zM7 6H4a1 1 0 00-1 1c0 2.2 1.8 4 4 4M17 6h3a1 1 0 011 1c0 2.2-1.8 4-4 4"/></svg></span><div><div class="text-white font-bold text-sm">' + eName + '</div><div class="text-xs text-gray-300 mt-0.5"><span class="text-gray-400">' + p.old_weight + ' кг</span> → <span class="text-green-400 font-bold">' + p.new_weight + ' кг</span></div></div></div>';
+      pCont.innerHTML += '<div class="glass p-3 flex items-start gap-2"><span class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style="background:linear-gradient(135deg,rgba(251,191,36,.25),rgba(236,72,153,.25))"><i data-lucide="trophy" class="w-5 h-5 text-yellow-400"></i></span><div><div class="text-white font-bold text-sm">' + eName + '</div><div class="text-xs text-gray-300 mt-0.5"><span class="text-gray-400">' + p.old_weight + ' кг</span> → <span class="text-green-400 font-bold">' + p.new_weight + ' кг</span></div></div></div>';
     });
   }
+  if (typeof refreshIcons === 'function') refreshIcons();
 }
 
 async function finishWorkout() {
@@ -304,8 +306,10 @@ async function finishWorkout() {
     S.lastWeights = await api('/api/last_weights/' + S.userId);
     try { S.workoutLogs = await api('/api/logs/' + S.userId); } catch (e) { S.workoutLogs = []; }
 
+    // День строго по явному day_number — без смещений
+    try { if (typeof markDayCompleted === 'function' && S.selectedDay !== null && S.selectedDay !== undefined) markDayCompleted(Number(S.selectedDay)); } catch (e) {}
     renderSummary(res, sets);
     showSection('workout-complete');
   } catch(e) { alert(e.message); }
-  if (btnFinish) { btnFinish.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Завершить'; btnFinish.disabled=false; }
+  if (btnFinish) { btnFinish.innerHTML = '<i data-lucide="check" class="w-5 h-5"></i> Завершить'; btnFinish.disabled=false; if (typeof refreshIcons === 'function') refreshIcons(); }
 }

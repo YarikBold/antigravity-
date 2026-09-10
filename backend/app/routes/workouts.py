@@ -294,17 +294,36 @@ async def active_plan(user_id: str):
 
 @router.get("/completed-days/{user_id}")
 async def completed_days(user_id: str, plan_id: Optional[str] = None, days: int = 7):
-    """Номера day_number, выполненные юзером (строго по сохранённому day_number, без смещений)."""
+    """Статусы дней строго по сохранённому day_number (без смещений):
+    {completed_days: {day: {completed, logged_at}}, next_pending_day}."""
     from datetime import timedelta
     sb = get_supabase()
     try:
         since = str(date.today() - timedelta(days=max(1, min(days, 60))))
-        q = sb.table("workout_logs").select("day_number").eq("user_id", user_id).eq("completed", True).gte("date", since)
+        q = sb.table("workout_logs").select("day_number,date,created_at").eq("user_id", user_id).eq("completed", True).gte("date", since)
         if plan_id:
             q = q.eq("plan_id", plan_id)
         rows = q.execute().data or []
-        done = sorted({int(r["day_number"]) for r in rows if r.get("day_number") is not None})
-        return {"completed_days": done}
+        done: dict = {}
+        for r in rows:
+            if r.get("day_number") is None:
+                continue
+            d = int(r["day_number"])
+            stamp = r.get("created_at") or r.get("date")
+            prev = done.get(d)
+            if prev is None or (stamp and stamp > prev.get("logged_at", "")):
+                done[d] = {"completed": True, "logged_at": stamp}
+        # next_pending_day: первый день плана, которого нет в completed_days
+        plan_days: list = []
+        if plan_id:
+            try:
+                pr = sb.table("plan_exercises").select("day_number").eq("plan_id", plan_id).execute().data or []
+                plan_days = sorted({int(x["day_number"]) for x in pr if x.get("day_number") is not None})
+            except Exception:
+                pass
+        nxt = next((d for d in plan_days if d not in done), None)
+        return {"completed_days": done, "next_pending_day": nxt,
+                "completed_list": sorted(done.keys())}
     except Exception as e:
         raise HTTPException(500, str(e))
 
