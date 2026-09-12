@@ -33,7 +33,7 @@ async def history_calendar(user_id: str, month: Optional[int] = None, year: Opti
     except Exception as e:
         raise HTTPException(500, f"history calendar: {e}")
 
-            completed_dates = sorted({str(r["date"])[:10] for r in rows})
+        completed_dates = sorted({str(r["date"])[:10] for r in rows})
 
     plan_cache = {}
     sessions = []
