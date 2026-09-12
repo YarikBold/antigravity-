@@ -1,7 +1,122 @@
 // workout.js [6] — силовой экран: сеты, RIR-подсказки (suggest-next-set), калькулятор блинов, завершение
 
-function startWorkout() {
+function workoutDraftKey(day) {
+  return [
+    'ag_workout_draft',
+    String(S.userId || 'nouser'),
+    String(S.user?.current_plan_id || 'noplan'),
+    String(day || S.selectedDay || 'noday')
+  ].join(':');
+}
+
+function currentWorkoutDraft() {
+  if (!S.userId || !S.user?.current_plan_id || !S.selectedDay) return null;
+  return {
+    user_id: String(S.userId),
+    plan_id: String(S.user.current_plan_id),
+    day_number: Number(S.selectedDay),
+    saved_at: new Date().toISOString(),
+    dayExercises: S.dayExercises || [],
+    workoutSets: S.workoutSets || {},
+    setHints: S.setHints || {},
+    has_completed_finisher: !!S.has_completed_finisher
+  };
+}
+
+function readWorkoutDraft(day) {
+  try {
+    const raw = localStorage.getItem(workoutDraftKey(day));
+    if (!raw) return null;
+    const draft = JSON.parse(raw);
+    if (!draft || !draft.workoutSets || Number(draft.day_number) !== Number(day || S.selectedDay)) return null;
+    return draft;
+  } catch (e) {
+    return null;
+  }
+}
+
+function hasLoggedDraftSets(draft) {
+  return Object.values(draft?.workoutSets || {}).flat().some(s =>
+    s && (s.done || Number(s.reps) > 0 || (s.set_type && s.set_type !== 'normal'))
+  );
+}
+
+function isEmptySetValue(v) {
+  return v === '' || v === undefined || v === null;
+}
+
+function updateDraftStatus(savedAt) {
+  const box = document.getElementById('draft-status');
+  const text = document.getElementById('draft-status-text');
+  if (!box || !text) return;
+  if (!S.selectedDay || !Object.keys(S.workoutSets || {}).length) {
+    box.classList.add('hidden');
+    box.classList.remove('flex');
+    return;
+  }
+  const doneCount = Object.values(S.workoutSets || {}).flat().filter(s => s && s.done).length;
+  const time = savedAt ? new Date(savedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '';
+  text.textContent = doneCount
+    ? `Черновик сохранён${time ? ' в ' + time : ''} · завершено подходов: ${doneCount}`
+    : `Черновик начат${time ? ' в ' + time : ''}`;
+  box.classList.remove('hidden');
+  box.classList.add('flex');
+}
+
+function saveWorkoutDraft() {
+  const draft = currentWorkoutDraft();
+  if (!draft) return;
+  try {
+    localStorage.setItem(workoutDraftKey(draft.day_number), JSON.stringify(draft));
+    updateDraftStatus(draft.saved_at);
+  } catch (e) {
+    console.warn('save workout draft failed', e);
+  }
+}
+
+function applyWorkoutDraft(draft) {
+  if (!draft) return false;
+  S.selectedDay = Number(draft.day_number);
+  S.dayExercises = Array.isArray(draft.dayExercises) && draft.dayExercises.length
+    ? draft.dayExercises
+    : (S.planData?.exercises || []).filter(e => Number(e.day_number) === Number(draft.day_number));
+  S.workoutSets = draft.workoutSets || {};
+  S.setHints = draft.setHints || {};
+  S.has_completed_finisher = !!draft.has_completed_finisher;
+  S.workoutStartedAt = Date.now();
+  const dayLabel = document.getElementById('workout-day-label');
+  if (dayLabel) dayLabel.textContent = dayLabelText(S.selectedDay);
+  renderWorkoutBadge();
+  renderExerciseCards();
+  resetTimer();
+  showSection('active-workout');
+  updateDraftStatus(draft.saved_at);
+  return true;
+}
+
+function clearWorkoutDraft(day) {
+  try { localStorage.removeItem(workoutDraftKey(day || S.selectedDay)); } catch (e) {}
+  const box = document.getElementById('draft-status');
+  if (box) {
+    box.classList.add('hidden');
+    box.classList.remove('flex');
+  }
+}
+
+function discardWorkoutDraft() {
+  if (!S.selectedDay) return;
+  if (!confirm('Сбросить черновик этой тренировки?')) return;
+  clearWorkoutDraft(S.selectedDay);
+  startWorkout(true);
+}
+
+function startWorkout(forceNew) {
   try{
+    const existingDraft = readWorkoutDraft(S.selectedDay);
+    if (!forceNew && hasLoggedDraftSets(existingDraft) && confirm('Есть сохранённый черновик этой тренировки. Продолжить с него?')) {
+      applyWorkoutDraft(existingDraft);
+      return;
+    }
     S.workoutSets = {};
     S.setHints = {};
     S._newPRs = [];
@@ -15,16 +130,24 @@ function startWorkout() {
         if (last.reps >= tr) defaultW = parseFloat((parseFloat(last.weight) + 2.5).toFixed(2));
       }
       const sets = ex.target_sets || ex.sets || 3;
-      for(let i=0; i<sets; i++) arr.push({ weight: defaultW, reps: 0, rir: 2, done: false, set_type: 'normal' });
+      for(let i=0; i<sets; i++) arr.push({
+        weight: i === 0 ? defaultW : '',
+        reps: '',
+        rir: 2,
+        done: false,
+        set_type: 'normal'
+      });
       S.workoutSets[ex.exercise_id] = arr;
     });
     const dayLabel = document.getElementById('workout-day-label');
     if (dayLabel) dayLabel.textContent = dayLabelText(S.selectedDay);
     S.has_completed_finisher = false;
+    S.workoutStartedAt = Date.now();
     renderWorkoutBadge();
     renderExerciseCards();
     resetTimer();
     showSection('active-workout');
+    saveWorkoutDraft();
   }catch(e){ alert('Ошибка startWorkout: '+ e.message); console.error(e); }
 }
 
@@ -80,9 +203,9 @@ function renderExerciseCards() {
       return `
       <div class="set-row p-2 rounded-lg border border-transparent ${s.done?'done':''}">
         <span class="set-num">#${i+1}</span>
-        <input type="number" step="0.5" inputmode="decimal" value="${s.weight !== '' ? s.weight : ''}" placeholder="${last ? last.weight : '0'}" class="input-dark" onchange="upd('${ex.exercise_id}',${i},'weight',this.value)" aria-label="Вес">
+        <input type="number" step="0.5" inputmode="decimal" value="${isEmptySetValue(s.weight) ? '' : s.weight}" placeholder="${last ? last.weight : '0'}" class="input-dark" onchange="upd('${ex.exercise_id}',${i},'weight',this.value)" aria-label="Вес">
         <span class="set-x">×</span>
-        <input type="number" inputmode="numeric" value="${s.reps !== '' ? s.reps : ''}" placeholder="${last ? last.reps : '0'}" class="input-dark" onchange="upd('${ex.exercise_id}',${i},'reps',this.value)" aria-label="Повторения">
+        <input type="number" inputmode="numeric" value="${isEmptySetValue(s.reps) ? '' : s.reps}" placeholder="${last ? last.reps : '0'}" class="input-dark" onchange="upd('${ex.exercise_id}',${i},'reps',this.value)" aria-label="Повторения">
         <select onchange="upd('${ex.exercise_id}',${i},'rir',this.value)" class="input-dark" aria-label="RIR" title="RIR — повторов в запасе">${rirOpts}</select>
         <select onchange="upd('${ex.exercise_id}',${i},'set_type',this.value)" class="input-dark" aria-label="Метод"><option value="normal" ${s.set_type==='normal'?'selected':''}>norm</option><option value="drop_set" ${s.set_type==='drop_set'?'selected':''}>drop</option><option value="rest_pause" ${s.set_type==='rest_pause'?'selected':''}>rest</option><option value="pyramid" ${s.set_type==='pyramid'?'selected':''}>pyr</option></select>
         <button type="button" onclick="done('${ex.exercise_id}',${i})" title="${s.done?'Отменить подход — вернуть на перезапись':'Завершить подход'}" class="set-done rounded ${s.done?'!bg-red-500/15 !text-red-400':'bg-purple/20 text-purple'} flex items-center justify-center" ${s.done?'style="background:rgba(239,68,68,.15) !important;color:#F87171 !important"':''}>${s.done?'<i data-lucide="rotate-ccw" class="w-4 h-4"></i>':'<i data-lucide="check" class="w-4 h-4"></i>'}</button>
@@ -102,12 +225,13 @@ function renderExerciseCards() {
 }
 
 window.upd = (eid, idx, field, val) => {
-  if(field==='set_type'){ S.workoutSets[eid][idx][field]=val; return; }
+  if(field==='set_type'){ S.workoutSets[eid][idx][field]=val; saveWorkoutDraft(); return; }
   const num = parseFloat(val);
   S.workoutSets[eid][idx][field] = isNaN(num) ? '' : num;
   if(field==='weight'){
     try{ const w=parseFloat(val); if(w>=20) renderPlates(w, 'plates-'+eid); }catch{}
   }
+  saveWorkoutDraft();
 };
 
 function dismissProgressionHint(){
@@ -159,9 +283,14 @@ window.done = async (eid, idx) => {
     s.done = false;
     try{ delete S.setHints[String(eid)+':'+idx]; }catch{}
     renderExerciseCards();
+    saveWorkoutDraft();
     return;
   }
-  if(s.weight === '' || s.weight === undefined || s.reps === '' || s.reps === undefined || Number(s.reps) <= 0) return alert('Введи вес и повторения (>0)');
+  if(isEmptySetValue(s.weight) && idx > 0) {
+    const prev = S.workoutSets[eid]?.[idx - 1];
+    if (prev && !isEmptySetValue(prev.weight)) s.weight = prev.weight;
+  }
+  if(isEmptySetValue(s.weight) || isEmptySetValue(s.reps) || Number(s.reps) <= 0) return alert('Введи вес и повторения (>0)');
   s.done = true;
 
   const ex = S.dayExercises.find(x=>String(x.exercise_id)===String(eid));
@@ -169,15 +298,16 @@ window.done = async (eid, idx) => {
 
   // Следующий подход: RIR-авторегуляция + подсказка над строкой сета
   const next = S.workoutSets[eid][idx+1];
-  if(next && !next.done && (next.weight === '' || next.weight === 0 || next.weight === undefined)){
+  if(next && !next.done && isEmptySetValue(next.weight)){
     const sug = await suggestNextSet(ex || {exercise_id: eid, target_reps:'8-12', exercises:{}}, s);
-    if(sug && sug.next_weight){
+    if(sug && !isEmptySetValue(sug.next_weight)){
       next.weight = parseFloat(Number(sug.next_weight).toFixed(2));
       if(sug.badge) S.setHints[String(eid)+':'+(idx+1)] = sug.badge;
     }
   }
 
   renderExerciseCards();
+  saveWorkoutDraft();
   // Динамический отдых: RIR-sensitive (изоляция 60-90с, база RIR<=1 180с / RIR>=2 120с)
   startRestTimer(null, Number(s.rir), mechanics);
   }catch(err){ console.error('done failed', err); alert('Ошибка: ' + (err && err.message || err)); }
@@ -195,6 +325,7 @@ async function swapExercise(exerciseId){
     ex.exercise_id=alt.id; ex.exercises=alt;
     if(oldSets){ S.workoutSets[alt.id]=oldSets; delete S.workoutSets[exerciseId]; }
     renderExerciseCards();
+    saveWorkoutDraft();
   }catch(e){ alert('Замена: '+e.message); } finally{ if(btn) btn.textContent=old||'Тренажер занят → Заменить'; }
 }
 
@@ -222,7 +353,7 @@ function finishWithoutFinisher(){
   finishWorkout();
 }
 
-// --- Экран триумфа: тоннаж + дельта + PR + карточки по упражнениям ---
+// --- Экран триумфа: тоннаж + дельта + PR + карточки по упражнениям с emoji ---
 function renderSummary(res, sets){
   const tonEl = document.getElementById('complete-tonnage');
   const dEl = document.getElementById('complete-delta');
@@ -241,34 +372,56 @@ function renderSummary(res, sets){
   if (prEl) prEl.textContent = prs;
   if (stats) stats.textContent = 'Залогировано подходов: ' + (res.logged || sets.length);
   S._newPRs = [];
+  S._lastComparison = res.comparison || [];
   const pCont = document.getElementById('progression-results');
   if (!pCont) return;
   pCont.innerHTML = '';
   const cmp = res.comparison || [];
   if (cmp.length) {
     cmp.forEach(c => {
-      let line;
-      if (c.is_assisted) {
-        line = 'Противовес: ' + c.cur_weight + ' кг → ' + (c.prev_assistance !== undefined ? c.prev_assistance + ' кг' : '?');
-        if (c.stronger) line = 'Противовес: ' + c.prev_assistance + ' кг → ' + c.cur_weight + ' кг (−' + c.assistance_delta + ' кг поддержки / Стал сильнее!)';
-      } else if (c.weight_delta > 0) {
-        line = 'Вес: ' + c.prev_weight + ' кг → ' + c.cur_weight + ' кг (+' + c.weight_delta + ' кг)';
-      } else if (c.reps_delta > 0) {
-        line = 'Повторения: ' + c.prev_reps + ' → ' + c.cur_reps + ' (+' + c.reps_delta + ' повт. в лучшем сете)';
-      } else {
-        line = c.message || ('Вес: ' + c.cur_weight + ' кг × ' + c.cur_reps);
+      const emoji = c.emoji || (c.is_pr ? '🏆' : '•');
+      let deltaClass = 'neutral';
+      if (c.is_assisted) deltaClass = 'assisted';
+      else if (c.weight_delta > 0 || c.reps_delta > 0) deltaClass = 'positive';
+      else if (c.weight_delta < 0) deltaClass = 'negative';
+
+      let line = c.summary_text || c.message || '';
+      if (!line) {
+        if (c.is_assisted && c.stronger) {
+          line = 'Противовес: ' + c.prev_assistance + ' кг → ' + c.cur_weight + ' кг (−' + c.assistance_delta + ' кг поддержки / Стал сильнее!)';
+        } else if (c.weight_delta > 0) {
+          line = c.prev_weight + ' кг → ' + c.cur_weight + ' кг (+' + c.weight_delta + ' кг)';
+        } else if (c.reps_delta > 0) {
+          line = c.prev_reps + ' → ' + c.cur_reps + ' повт. (+' + c.reps_delta + ' в лучшем сете)';
+        } else if (c.weight_delta === 0) {
+          line = 'Вес удержан (закрепление техники)';
+        } else {
+          line = (c.cur_weight || 0) + ' кг × ' + (c.cur_reps || 0);
+        }
       }
-      const e1 = (c.cur_e1rm !== undefined && c.cur_e1rm !== null) ? ' <span class="text-gray-500">| e1RM: ' + c.cur_e1rm + ' кг' + (c.is_pr ? ' (PR!)' : '') + '</span>' : '';
-      const badge = c.is_pr
-        ? '<span class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style="background:linear-gradient(135deg,rgba(251,191,36,.25),rgba(236,72,153,.25))"><i data-lucide="trophy" class="w-5 h-5 text-yellow-400"></i></span>'
-        : '<span class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 bg-white/5"><span class="w-1.5 h-1.5 rounded-full bg-gray-500"></span></span>';
-      pCont.innerHTML += '<div class="glass p-3 flex items-start gap-2">' + badge + '<div><div class="text-white font-bold text-sm">' + (c.name || 'Упражнение') + '</div><div class="text-xs text-gray-300 mt-0.5">' + line + e1 + '</div></div></div>';
-      if (c.is_pr) S._newPRs.push({ name: c.name, e1rm: c.cur_e1rm });
+
+      const e1rm = Number(c.cur_e1rm);
+      const e1rmBadge = (!isNaN(e1rm) && e1rm > 0)
+        ? ' <span class="text-gray-500">| e1RM: ' + e1rm + ' кг' + (c.is_pr ? ' (PR!)' : '') + '</span>'
+        : '';
+
+      pCont.innerHTML += '<div class="triumph-card">' +
+        '<div class="triumph-emoji">' + emoji + '</div>' +
+        '<div>' +
+        '<div class="triumph-name">' + (c.name || 'Упражнение') + '</div>' +
+        '<div class="triumph-delta ' + deltaClass + '">' + line + e1rmBadge + '</div>' +
+        '</div></div>';
+      if (c.is_pr) S._newPRs.push({ name: c.name, e1rm: c.cur_e1rm, emoji: emoji });
     });
   } else if (res.progressions && res.progressions.length) {
     res.progressions.forEach(p => {
       const eName = (S.dayExercises.find(e => String(e.exercise_id) === String(p.exercise_id)) || {}).exercises?.name || 'Упражнение';
-      pCont.innerHTML += '<div class="glass p-3 flex items-start gap-2"><span class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style="background:linear-gradient(135deg,rgba(251,191,36,.25),rgba(236,72,153,.25))"><i data-lucide="trophy" class="w-5 h-5 text-yellow-400"></i></span><div><div class="text-white font-bold text-sm">' + eName + '</div><div class="text-xs text-gray-300 mt-0.5"><span class="text-gray-400">' + p.old_weight + ' кг</span> → <span class="text-green-400 font-bold">' + p.new_weight + ' кг</span></div></div></div>';
+      pCont.innerHTML += '<div class="triumph-card">' +
+        '<div class="triumph-emoji">🚀</div>' +
+        '<div>' +
+        '<div class="triumph-name">' + eName + '</div>' +
+        '<div class="triumph-delta positive">' + p.old_weight + ' кг → ' + p.new_weight + ' кг</div>' +
+        '</div></div>';
     });
   }
   if (typeof refreshIcons === 'function') refreshIcons();
@@ -283,8 +436,8 @@ async function finishWorkout() {
           exercise_id: eid,
           set_number: i+1,
           set_type: s.set_type||'normal',
-          weight: Number(s.weight),
-          reps: Number(s.reps),
+          weight: Number(s.weight) || 0,
+          reps: Number(s.reps) || 0,
           rir: s.rir === '' ? 2 : Number(s.rir)
         });
       }
@@ -298,7 +451,13 @@ async function finishWorkout() {
   try {
     let res;
     try{
-      res = await api('/api/workouts/complete', { method: 'POST', body: JSON.stringify({ user_id: String(S.userId), plan_id: String(S.user.current_plan_id||''), day_number: S.selectedDay, sets }) });
+      res = await api('/api/workouts/complete', { method: 'POST', body: JSON.stringify({
+        user_id: String(S.userId),
+        plan_id: String(S.user.current_plan_id||''),
+        day_number: S.selectedDay,
+        total_duration_minutes: S.workoutStartedAt ? Math.max(1, Math.round((Date.now() - S.workoutStartedAt)/60000)) : null,
+        sets
+      }) });
     }catch(e){
       const legacySets = sets.map(s=>({exercise_id: s.exercise_id, set_number: s.set_number, weight: s.weight, reps: s.reps, rir: s.rir}));
       res = await api('/api/finish_workout', { method: 'POST', body: JSON.stringify({ user_id: S.userId, day_number: S.selectedDay, sets: legacySets }) });
@@ -309,7 +468,16 @@ async function finishWorkout() {
     // День строго по явному day_number — без смещений
     try { if (typeof markDayCompleted === 'function' && S.selectedDay !== null && S.selectedDay !== undefined) markDayCompleted(Number(S.selectedDay)); } catch (e) {}
     renderSummary(res, sets);
+    clearWorkoutDraft(S.selectedDay);
     showSection('workout-complete');
   } catch(e) { alert(e.message); }
   if (btnFinish) { btnFinish.innerHTML = '<i data-lucide="check" class="w-5 h-5"></i> Завершить'; btnFinish.disabled=false; if (typeof refreshIcons === 'function') refreshIcons(); }
 }
+
+window.addEventListener('beforeunload', function(e){
+  const active = document.getElementById('active-workout')?.classList.contains('active');
+  if (!active || !hasLoggedDraftSets(currentWorkoutDraft())) return;
+  saveWorkoutDraft();
+  e.preventDefault();
+  e.returnValue = '';
+});

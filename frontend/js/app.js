@@ -23,7 +23,7 @@ function refreshIcons() {
 }
 
 function highlightTab(id) {
-  const map = { dashboard: 'dashboard', 'bench-calendar': 'bench-calendar', 'cardio-runner': 'cardio-runner' };
+  const map = { dashboard: 'dashboard', 'bench-calendar': 'bench-calendar', history: 'history', 'history-detail': 'history' };
   document.querySelectorAll('#main-tabs [data-tab]').forEach(b => {
     b.classList.toggle('tab-active', map[id] === b.getAttribute('data-tab'));
   });
@@ -48,6 +48,9 @@ function showSection(id) {
         message.classList.remove('hidden');
       }
     });
+  }
+  if (id === 'history' && typeof loadHistoryCalendar === 'function') {
+    loadHistoryCalendar();
   }
 }
 
@@ -298,8 +301,11 @@ async function selectPlan(planId) {
 
 // --- Day buttons (День А/Б, кардио-день) ---
 function dayLabelText(d) {
-  const isFullBodyAB = S.planData?.plan?.split_type === 'full_body';
-  if (isFullBodyAB) return 'День ' + (d === 1 ? 'А' : d === 2 ? 'Б' : d);
+  const isFullBody = S.planData?.plan?.split_type === 'full_body';
+  if (isFullBody) {
+    const letters = { 1: 'А', 2: 'Б', 3: 'В', 4: 'Г' };
+    return 'День ' + (letters[d] || d);
+  }
   return 'День ' + d;
 }
 

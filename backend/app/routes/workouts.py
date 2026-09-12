@@ -12,20 +12,24 @@ legacy_router = APIRouter(prefix="/api", tags=["legacy"])
 class SetLog(BaseModel):
     exercise_id: str
     set_number: int
-    set_type: Literal["normal","drop_set","rest_pause","pyramid"] = "normal"
-    weight: float
-    reps: int
-    rir: int
+    set_type: Literal["normal","drop_set","rest_pause","pyramid","emom"] = "normal"
+    weight: Optional[float] = None
+    reps: Optional[int] = None
+    rir: Optional[int] = 2
+    duration_seconds: Optional[int] = None
+    completed_rounds: Optional[int] = None
 
 class CompleteRequest(BaseModel):
     user_id: str
     plan_id: Optional[str] = None
     day_number: Optional[int] = None
+    total_duration_minutes: Optional[int] = None
     sets: List[SetLog]
 
 class CardioCompleteRequest(BaseModel):
     user_id: str
     plan_id: Optional[str] = None
+    day_number: Optional[int] = 4
     total_duration_minutes: int = 45
     emom_rounds_completed: int = 3
     perceived_effort_rpe: int = 8
@@ -112,7 +116,8 @@ async def complete_workout(req: CompleteRequest):
         log_id = None
         try:
             payload = {"user_id": req.user_id, "plan_id": req.plan_id, "date": str(date.today()),
-                       "day_number": req.day_number, "completed": True}
+                       "day_number": req.day_number, "completed": True,
+                       "session_type": "strength", "total_duration_minutes": req.total_duration_minutes}
             ins = sb.table("workout_logs").insert(payload).execute()
             log_id = ins.data[0]["id"] if ins.data else None
         except Exception:
@@ -181,7 +186,14 @@ async def complete_workout(req: CompleteRequest):
         for s in req.sets:
             if log_id:
                 try:
-                    sb.table("workout_sets").insert({"log_id": log_id, "exercise_id": s.exercise_id, "set_number": s.set_number, "set_type": s.set_type, "weight": s.weight, "reps": s.reps, "rir": s.rir}).execute()
+                    row = {"log_id": log_id, "exercise_id": s.exercise_id, "set_number": s.set_number,
+                           "set_type": s.set_type or "normal", "weight": s.weight, "reps": s.reps,
+                           "rir": s.rir if s.rir is not None else 2}
+                    if s.duration_seconds:
+                        row["duration_seconds"] = s.duration_seconds
+                    if s.completed_rounds:
+                        row["completed_rounds"] = s.completed_rounds
+                    sb.table("workout_sets").insert(row).execute()
                 except Exception:
                     sb.table("workout_logs").insert({"user_id": req.user_id, "exercise_id": s.exercise_id, "weight": s.weight, "reps": s.reps, "rir": s.rir, "date": datetime.utcnow().isoformat()}).execute()
             else:
@@ -230,9 +242,14 @@ async def complete_workout(req: CompleteRequest):
                     pass
             if not meta: continue
             tr, mech, cns, mus, _a = meta
-            if should_progress(last_set.reps, last_set.rir, parse_target_reps(tr), last_set.weight):
-                nw = next_weight(last_set.weight, mech, cns, mus)
-                progressions.append({"exercise_id": eid, "old_weight": last_set.weight, "new_weight": nw, "suggestion": suggest_next_set(last_set.rir, last_set.reps, tr, last_set.weight, mech, cns, mus)})
+            last_reps = int(last_set.reps or 0)
+            last_rir = int(last_set.rir if last_set.rir is not None else 2)
+            last_w = float(last_set.weight or 0)
+            if last_w <= 0 or last_reps <= 0:
+                continue
+            if should_progress(last_reps, last_rir, parse_target_reps(tr), last_w):
+                nw = next_weight(last_w, mech, cns, mus)
+                progressions.append({"exercise_id": eid, "old_weight": last_w, "new_weight": nw, "suggestion": suggest_next_set(last_rir, last_reps, tr, last_w, mech, cns, mus)})
         return {"status": "ok", "logged": logged, "progressions": progressions, "log_id": log_id,
                 "comparison": comparison, "session_tonnage": session_tonnage,
                 "tonnage_delta": tonnage_delta, "pr_count": pr_count}
@@ -250,6 +267,7 @@ async def cardio_complete(req: CardioCompleteRequest):
             "user_id": req.user_id,
             "plan_id": req.plan_id,
             "date": str(date.today()),
+            "day_number": req.day_number or 4,
             "completed": True,
             "session_type": "cardio",
             "total_duration_minutes": req.total_duration_minutes,
@@ -258,6 +276,28 @@ async def cardio_complete(req: CardioCompleteRequest):
         }
         ins = sb.table("workout_logs").insert(log_data).execute()
         log_id = ins.data[0]["id"] if ins.data else None
+        if log_id and req.plan_id:
+            try:
+                day_n = req.day_number or 4
+                rows = sb.table("plan_exercises").select("exercise_id, order_index, target_reps, suggested_method, exercises(name, movement_pattern)").eq("plan_id", req.plan_id).eq("day_number", day_n).order("order_index").execute().data or []
+                for i, row in enumerate(rows):
+                    eid = row.get("exercise_id")
+                    if not eid:
+                        continue
+                    mp = ((row.get("exercises") or {}).get("movement_pattern") or "")
+                    payload = {"log_id": log_id, "exercise_id": eid, "set_number": 1, "set_type": row.get("suggested_method") or "normal", "rir": 2}
+                    if mp == "cardio":
+                        payload["duration_seconds"] = 900 if i == 0 else 1080
+                        if i == 0:
+                            payload["weight"] = 1.5
+                    else:
+                        payload["completed_rounds"] = req.emom_rounds_completed
+                        tr = str(row.get("target_reps") or "0")
+                        digits = "".join(ch for ch in tr if ch.isdigit())
+                        payload["reps"] = int(digits) if digits else None
+                    sb.table("workout_sets").insert(payload).execute()
+            except Exception:
+                pass
         return {
             "status": "ok",
             "log_id": log_id,

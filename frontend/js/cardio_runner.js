@@ -217,9 +217,11 @@ async function crSave(){
   const totalMin = cr.sessionStart ? Math.max(1, Math.round((Date.now() - cr.sessionStart)/60000)) : 45;
   const doneEl = document.getElementById('cr-done-min');
   if(doneEl) doneEl.textContent = '~' + totalMin + ' мин';
+  const cardioDay = (S.planData?.exercises || []).find(e => e.exercises && ['cardio','conditioning'].includes(e.exercises.movement_pattern));
   const payload = {
     user_id: String(S.userId),
     plan_id: String(S.user.current_plan_id || ''),
+    day_number: cardioDay ? Number(cardioDay.day_number) : 4,
     total_duration_minutes: totalMin,
     emom_rounds_completed: cr.emomDone || 0,
     perceived_effort_rpe: 7,
@@ -235,7 +237,11 @@ async function crSave(){
   }
   if(persisted && typeof loadDashboard === 'function'){
     try{ S.workoutLogs = await api('/api/logs/' + S.userId); }catch{}
+    try {
+      if (typeof markDayCompleted === 'function') markDayCompleted(payload.day_number);
+    } catch (e) {}
   }
   showSection('dashboard');
   if(persisted && typeof renderCalendar === 'function') renderCalendar();
+  if(persisted && typeof renderDayButtons === 'function') renderDayButtons();
 }

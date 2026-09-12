@@ -91,14 +91,19 @@ function stopMetronome(){
 
 // --- Workout Share Card: форматированный текст для Telegram ---
 function buildShareText(){
-  const tonnage = Object.values(S.workoutSets || {}).flat().filter(s=>s.done).reduce((a,s)=>a+(s.weight*s.reps),0);
-  const prLines = (S._newPRs || []).map(p=>`[PR] e1RM ${p.name}: ${p.e1rm}кг`).join('\n');
+  const cmp = S._lastComparison || [];
+  const recLines = cmp.map(c => {
+    const em = c.emoji || (c.is_pr ? '🏆' : '•');
+    return em + ' ' + (c.name || 'Упражнение') + ': ' + (c.summary_text || c.message || '');
+  }).filter(l => l.trim().length > 2);
+  const prLines = (S._newPRs || []).map(p => (p.emoji || '[PR]') + ' ' + p.name + (p.e1rm ? (': e1RM ' + p.e1rm + 'кг') : ''));
+  const tonnageEl = document.getElementById('complete-tonnage');
   return [
-    `ANTIGRAVITY — ${new Date().toLocaleDateString('ru-RU')}`,
-    `Атлет: ${S.user?.name || ''} • ${S.planData?.plan?.name || ''} ${typeof dayLabelText==='function' ? dayLabelText(S.selectedDay) : ('День ' + (S.selectedDay||''))}`,
-    `Тоннаж: ${tonnage.toFixed(1)} кг`,
-    prLines,
-    `Подходов: ${Object.values(S.workoutSets || {}).flat().filter(s=>s.done).length}`
+    'ANTIGRAVITY — ' + new Date().toLocaleDateString('ru-RU'),
+    'Атлет: ' + (S.user?.name || '') + ' • ' + (S.planData?.plan?.name || '') + ' ' + (typeof dayLabelText==='function' ? dayLabelText(S.selectedDay) : ('День ' + (S.selectedDay||''))),
+    tonnageEl ? ('Тоннаж: ' + tonnageEl.textContent) : '',
+    recLines.length ? recLines.join('\n') : prLines.join('\n'),
+    'Подходов: ' + Object.values(S.workoutSets || {}).flat().filter(s=>s.done).length
   ].filter(Boolean).join('\n');
 }
 

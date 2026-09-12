@@ -107,16 +107,20 @@ def effective_e1rm(weight, reps, is_assisted: bool = False, bodyweight: float = 
 
 def compare_exercise_to_last(exercise_id: str, name: str, cur_best: dict, prev_best: dict | None,
                              is_assisted: bool = False, bodyweight: float = 0.0) -> dict:
-    """Сравнение лучшего сета упражнения с прошлой тренировкой. Guards None/0."""
+    """Сравнение лучшего сета упражнения с прошлой тренировкой. Guards None/0.
+    Возвращает emoji и summary_text для экрана триумфа."""
     cur_w = float((cur_best or {}).get("weight") or 0)
     cur_r = int((cur_best or {}).get("reps") or 0)
     out = {"exercise_id": exercise_id, "name": name, "is_assisted": bool(is_assisted),
-           "cur_weight": cur_w, "cur_reps": cur_r, "is_pr": False, "message": ""}
+           "cur_weight": cur_w, "cur_reps": cur_r, "is_pr": False, "message": "",
+           "emoji": "", "summary_text": ""}
     if is_assisted:
         out["cur_effective"] = effective_weight(cur_w, cur_r, True, bodyweight)
         out["cur_e1rm"] = effective_e1rm(cur_w, cur_r, True, bodyweight)
         if not prev_best:
             out["message"] = "Первое измерение противовеса — база для прогресса."
+            out["emoji"] = "🔰"
+            out["summary_text"] = f"Противовес: {cur_w} кг (первое измерение)"
             return out
         try:
             prev_w = float(prev_best.get("weight") or 0)
@@ -129,10 +133,17 @@ def compare_exercise_to_last(exercise_id: str, name: str, cur_best: dict, prev_b
         out["message"] = prog["message"]
         if prog["stronger"]:
             out["is_pr"] = True
+            out["emoji"] = "🦾"
+            out["summary_text"] = f"Противовес: {prev_w} кг → {cur_w} кг (−{prog['delta']} кг поддержки / Стал сильнее!)"
+        else:
+            out["emoji"] = "📌"
+            out["summary_text"] = f"Противовес: {cur_w} кг (удержание)"
         return out
     out["cur_e1rm"] = epley_e1rm(cur_w, cur_r)
     if not prev_best:
         out["message"] = "Первое выполнение — точка отсчёта."
+        out["emoji"] = "🔰"
+        out["summary_text"] = f"{cur_w} кг × {cur_r} (первый раз)"
         return out
     try:
         prev_w = float(prev_best.get("weight") or 0)
@@ -149,13 +160,21 @@ def compare_exercise_to_last(exercise_id: str, name: str, cur_best: dict, prev_b
     if dw > 0:
         out["is_pr"] = True
         out["message"] = f"Вес: {prev_w} кг → {cur_w} кг (+{dw} кг)"
+        out["emoji"] = "🚀"
+        out["summary_text"] = f"{prev_w} кг → {cur_w} кг (+{dw} кг)"
     elif dw < 0:
         out["message"] = f"Вес: {prev_w} кг → {cur_w} кг ({dw} кг) — делоад/техника."
+        out["emoji"] = "🔧"
+        out["summary_text"] = f"{prev_w} кг → {cur_w} кг ({dw} кг) делоад"
     elif dr > 0:
         out["is_pr"] = True
         out["message"] = f"Повторения: {prev_r} → {cur_r} (+{dr} повт. в лучшем сете)"
+        out["emoji"] = "⚡"
+        out["summary_text"] = f"{prev_r} → {cur_r} повт. (+{dr}) в лучшем сете"
     else:
-        out["message"] = f"Стабильно: {cur_w} кг × {cur_r}."
+        out["message"] = f"Вес удержан (закрепление техники)"
+        out["emoji"] = "📌"
+        out["summary_text"] = f"{cur_w} кг × {cur_r} (закрепление)"
     return out
 
 def mev_mav_status(sets_per_week: int, muscle: str) -> str:

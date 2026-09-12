@@ -62,6 +62,7 @@ function ftStopTick(){
 function ftFinishNaturally(doneText){
   ftStopTick();
   try { S.has_completed_finisher = true; } catch (e) {}
+  try { if (typeof saveWorkoutDraft === 'function') saveWorkoutDraft(); } catch (e) {}
   const display = document.getElementById('finisher-display');
   if (display) display.textContent = doneText || 'Готово!';
   ftBeep(880, 400);

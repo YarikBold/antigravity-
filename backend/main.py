@@ -17,12 +17,14 @@ try:
     from app.routes.readiness import router as readiness_router, legacy_router as readiness_legacy
     from app.routes.analytics import router as analytics_router
     from app.routes.bench import router as bench_router
+    from app.routes.history import router as history_router
 except ModuleNotFoundError:
     from backend.app.database import get_supabase
     from backend.app.routes.workouts import router as workouts_router, legacy_router as workouts_legacy
     from backend.app.routes.readiness import router as readiness_router, legacy_router as readiness_legacy
     from backend.app.routes.analytics import router as analytics_router
     from backend.app.routes.bench import router as bench_router
+    from backend.app.routes.history import router as history_router
 
 app = FastAPI(title="Antigravity", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -31,6 +33,7 @@ app.include_router(workouts_router)
 app.include_router(readiness_router)
 app.include_router(analytics_router)
 app.include_router(bench_router)
+app.include_router(history_router)
 app.include_router(workouts_legacy)
 app.include_router(readiness_legacy)
 
@@ -49,7 +52,7 @@ class UpdateScheduleRequest(BaseModel):
 
 LEGACY_ID_MAP = {"1":"11111111-1111-1111-1111-111111111111","2":"22222222-2222-2222-2222-222222222222","00000000-0000-0000-0000-000000000001":"11111111-1111-1111-1111-111111111111","00000000-0000-0000-0000-000000000002":"22222222-2222-2222-2222-222222222222"}
 UUID_TO_LEGACY = {v:k for k,v in LEGACY_ID_MAP.items()}
-DEFAULT_SCHEDULE = {"11111111-1111-1111-1111-111111111111":[1,3,5],"22222222-2222-2222-2222-222222222222":[1,2,4,5],"00000000-0000-0000-0000-000000000001":[1,3,5],"00000000-0000-0000-0000-000000000002":[1,2,4,5]}
+DEFAULT_SCHEDULE = {"11111111-1111-1111-1111-111111111111":[1,3,5,6],"22222222-2222-2222-2222-222222222222":[1,2,4,5],"00000000-0000-0000-0000-000000000001":[1,3,5,6],"00000000-0000-0000-0000-000000000002":[1,2,4,5]}
 
 def _resolve_plan_for_user(sb, uid: str):
     """Return a valid plan id for user: target_user_id -> user's current_plan link -> any plan -> None."""
